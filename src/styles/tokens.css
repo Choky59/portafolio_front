@@ -1,0 +1,79 @@
+/*
+ * Design tokens. Dark is the brand default; light follows the system
+ * unless the visitor picks a theme (data-theme on <html>).
+ * Three.js scenes read the --three-* and state colors from here (src/three/paleta.js).
+ */
+:root {
+  color-scheme: dark;
+
+  --bg: #22170F;
+  --surface: #2E2016;
+  --surface-2: #3A2A1D;
+  --text: #F1E6CC;
+  --muted: #C2B394;
+  --border: rgba(241, 230, 204, 0.16);
+  --accent: #F4B33A;
+  --accent-ink: #F4B33A;      /* accent used as text color */
+  --on-accent: #22170F;       /* text on accent backgrounds */
+
+  /* "¿Se puede salir?" states */
+  --frio: #8FA8D8;
+  --ideal: #7FB7A4;
+  --calor: #F4B33A;
+  --extremo: #E4572E;
+
+  /* 3D scenes */
+  --three-suelo: #4A3320;
+  --three-montana: #34241A;
+  --three-saguaro: #5E8F6E;
+  --three-vidrio: #F1E6CC;
+
+  --font-title: 'Caveat Brush', 'Comic Sans MS', cursive;
+  --font-body: 'Bricolage Grotesque', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --radius: 14px;
+  --radius-lg: 22px;
+  --gutter: 16px;
+  --max-width: 1120px;
+  --shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+}
+
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    color-scheme: light;
+
+    --bg: #F1E6CC;
+    --surface: #E8D9B6;
+    --surface-2: #DDCA9F;
+    --text: #22170F;
+    --muted: #5C4834;
+    --border: rgba(34, 23, 15, 0.16);
+    --accent-ink: #8A5300;
+
+    --three-suelo: #D6BC88;
+    --three-montana: #C29A6B;
+    --three-saguaro: #4F7F5F;
+    --three-vidrio: #FFFFFF;
+
+    --shadow: 0 10px 30px rgba(34, 23, 15, 0.12);
+  }
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --bg: #F1E6CC;
+  --surface: #E8D9B6;
+  --surface-2: #DDCA9F;
+  --text: #22170F;
+  --muted: #5C4834;
+  --border: rgba(34, 23, 15, 0.16);
+  --accent-ink: #8A5300;
+
+  --three-suelo: #D6BC88;
+  --three-montana: #C29A6B;
+  --three-saguaro: #4F7F5F;
+  --three-vidrio: #FFFFFF;
+
+  --shadow: 0 10px 30px rgba(34, 23, 15, 0.12);
+}
