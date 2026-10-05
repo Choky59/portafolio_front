@@ -22,10 +22,20 @@ En desarrollo, Vite manda `/api` al backend en `localhost:3000` (proxy), así qu
 
 ## Producción (Firebase Hosting)
 
-1. En `.env`, pon `VITE_API_URL=https://TU-API.herokuapp.com` y compila con `npm run build`.
-2. En `firebase.json`, reemplaza `TU-API.herokuapp.com` y `TU-CDN.example.com` en la CSP por tus dominios reales.
-3. Corre `firebase deploy --only hosting`. La primera vez, `firebase use --add` para elegir el proyecto.
-4. En el backend, agrega el dominio del sitio a `CORS_ORIGIN`.
+Cada push a `main` despliega solo con [`.github/workflows/deploy-firebase.yml`](.github/workflows/deploy-firebase.yml) al proyecto `proyectos-andres`. También se puede lanzar a mano desde la pestaña **Actions** → **Run workflow**.
+
+Hay que configurar en GitHub (**Settings → Secrets and variables → Actions**):
+
+| Tipo | Nombre | Valor |
+|---|---|---|
+| Secret | `FIREBASE_SERVICE_ACCOUNT` | JSON de una cuenta de servicio con el rol *Firebase Hosting Admin* |
+| Variable | `VITE_API_URL` | URL del backend en Heroku |
+| Variable | `VITE_CV_URL`, `VITE_WHATSAPP` | Opcionales |
+| Variable | `CDN_ORIGINS` | Opcional: dónde viven los MP4 y .glb |
+
+`firebase.json` trae placeholders en la CSP (`TU-API...`, `TU-CDN...`). El workflow los llena con `scripts/preparar-firebase.mjs` antes de publicar, así que no hay que editarlos a mano.
+
+En el backend, `CORS_ORIGIN` debe incluir `https://proyectos-andres.web.app,https://proyectos-andres.firebaseapp.com`.
 
 ## Estructura
 

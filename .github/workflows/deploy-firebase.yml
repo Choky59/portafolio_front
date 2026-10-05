@@ -1,0 +1,55 @@
+name: Deploy frontend (Firebase Hosting)
+
+# Every push to main builds the site and publishes it to Firebase Hosting (proyectos-andres).
+# It can also be launched by hand from the Actions tab (Run workflow).
+#
+# Required in GitHub (Settings -> Secrets and variables -> Actions):
+#   Secret   FIREBASE_SERVICE_ACCOUNT   JSON key of a service account with the "Firebase Hosting Admin" role
+#   Variable VITE_API_URL               Backend URL, e.g. https://portafolio-choki-xxxx.herokuapp.com
+#   Variable VITE_CV_URL                (optional) link to the CV
+#   Variable VITE_WHATSAPP              (optional) number with country code, digits only
+#   Variable CDN_ORIGINS                (optional) where the MP4/GLB live, e.g. https://firebasestorage.googleapis.com
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: firebase-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Build and deploy
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          VITE_CV_URL: ${{ vars.VITE_CV_URL }}
+          VITE_WHATSAPP: ${{ vars.VITE_WHATSAPP }}
+        run: npm run build
+
+      - name: Set API and CDN origins in the CSP
+        env:
+          VITE_API_URL: ${{ vars.VITE_API_URL }}
+          CDN_ORIGINS: ${{ vars.CDN_ORIGINS }}
+        run: node scripts/preparar-firebase.mjs
+
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: proyectos-andres
+          channelId: live
