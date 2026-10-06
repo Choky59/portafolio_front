@@ -15,6 +15,11 @@ const routes = [
     },
   },
   {
+    // There's no separate list page: the projects live on the home page
+    path: '/proyectos',
+    redirect: { path: '/', hash: '#proyectos' },
+  },
+  {
     // Project page: one layout (loads the project once) + one route per tab.
     // Titles come from the project itself (useHeadSeccion in each tab).
     path: '/proyectos/:slug',

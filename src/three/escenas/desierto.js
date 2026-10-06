@@ -16,6 +16,7 @@ import { colorPorTemperatura } from '../paleta.js'
  */
 export default function crearDesierto() {
   let camera, sol, termometro, paleta
+  let paralaje = 0.9
   const camPos = { x: 0, y: 2.4 }
 
   return {
@@ -62,9 +63,25 @@ export default function crearDesierto() {
       camera.lookAt(0, 1.6, 0)
     },
 
+    /**
+     * Portrait screens (phones): wider field of view and the sun/thermometer pulled toward
+     * the center, so they aren't cut at the right edge. Parallax is also softer.
+     */
+    resize(width, height) {
+      const aspecto = width / height
+      const vertical = aspecto < 1
+      camera.fov = vertical ? 45 + (1 - aspecto) * 28 : 45
+      camera.updateProjectionMatrix()
+
+      sol.grupo.position.x = vertical ? 1.6 : 4.5
+      sol.grupo.position.y = vertical ? 6.2 : 5.2
+      termometro.grupo.position.x = vertical ? 1.5 : 2.6
+      paralaje = vertical ? 0.4 : 0.9
+    },
+
     update(dt, t, input) {
       // Parallax: camera eases toward the pointer, sinks a bit with scroll
-      camPos.x = acercar(camPos.x, input.x * 0.9, dt || 1, 2.5)
+      camPos.x = acercar(camPos.x, input.x * paralaje, dt || 1, 2.5)
       camPos.y = acercar(camPos.y, 2.4 + input.y * 0.35 - input.scroll * 0.8, dt || 1, 2.5)
       camera.position.x = camPos.x
       camera.position.y = camPos.y

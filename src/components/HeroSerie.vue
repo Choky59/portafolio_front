@@ -40,12 +40,19 @@ const cargarDesierto = () => import('../three/escenas/desierto.js')
 </template>
 
 <style scoped>
+/* Phones: shorter hero so the first project peeks above the fold */
 .hero {
   position: relative;
-  min-height: min(88vh, 760px);
+  min-height: min(72svh, 600px);
   display: flex;
   align-items: flex-end;
   overflow: hidden;
+}
+
+@media (min-width: 720px) {
+  .hero {
+    min-height: min(88vh, 760px);
+  }
 }
 
 .hero__escena {
@@ -72,35 +79,57 @@ const cargarDesierto = () => import('../three/escenas/desierto.js')
 
 .hero__contenido {
   position: relative;
-  padding-top: 120px;
-  padding-bottom: 48px;
+  padding-top: 96px;
+  padding-bottom: 28px;
 }
 
 .hero__serie {
   display: inline-block;
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.72rem;
+  line-height: 1.4;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: var(--on-accent);
   background: var(--accent);
   padding: 4px 12px;
-  border-radius: 999px;
+  border-radius: 12px;
 }
 
 .hero__nombre {
-  margin-top: 12px;
+  margin-top: 10px;
 }
 
 .hero__presentacion {
   max-width: 36rem;
-  font-size: 1.15rem;
+  font-size: 1.05rem;
 }
 
 .hero__acciones {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-  margin-top: 20px;
+  margin-top: 16px;
+}
+
+@media (min-width: 720px) {
+  .hero__contenido {
+    padding-top: 120px;
+    padding-bottom: 48px;
+  }
+
+  .hero__serie {
+    font-size: 0.85rem;
+    letter-spacing: 0.08em;
+    border-radius: 999px;
+  }
+
+  .hero__presentacion {
+    font-size: 1.15rem;
+  }
+
+  .hero__acciones {
+    margin-top: 20px;
+  }
 }
 </style>

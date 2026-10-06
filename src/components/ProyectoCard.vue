@@ -18,10 +18,10 @@ const con3D = useMediaQuery('(min-width: 720px)')
     <div class="tarjeta__portada">
       <ThreeCanvas v-if="con3D" :cargar="cargar" :params="{ numero: proyecto.numero }" liberar-fuera-de-pantalla>
         <template #poster>
-          <div class="tarjeta__poster">#{{ proyecto.numero }}</div>
+          <div class="tarjeta__poster" />
         </template>
       </ThreeCanvas>
-      <div v-else class="tarjeta__poster" aria-hidden="true">#{{ proyecto.numero }}</div>
+      <div v-else class="tarjeta__poster" aria-hidden="true" />
       <span v-if="proyecto.enVivo" class="badge-live tarjeta__vivo">En vivo</span>
     </div>
 
@@ -58,7 +58,8 @@ const con3D = useMediaQuery('(min-width: 720px)')
 
 .tarjeta__portada {
   position: relative;
-  aspect-ratio: 16 / 8;
+  aspect-ratio: 16 / 7;
+  overflow: hidden;
   background: var(--surface-2);
 }
 
@@ -68,21 +69,38 @@ const con3D = useMediaQuery('(min-width: 720px)')
   }
 }
 
-/* Illustrated cover (phones, and while the 3D scene loads): sun over the desert */
+/* Illustrated cover (phones, and while the 3D scene loads): sun, mountains and desert floor */
 .tarjeta__poster {
-  display: flex;
-  align-items: flex-end;
+  position: relative;
   width: 100%;
   height: 100%;
-  padding: 10px 16px;
-  font-family: var(--font-title);
-  font-size: 3rem;
-  line-height: 1;
-  color: var(--text);
   background:
-    radial-gradient(circle at 78% 32%, var(--accent) 0 11%, color-mix(in srgb, var(--accent) 25%, transparent) 12% 17%, transparent 18%),
-    linear-gradient(to bottom, transparent 62%, var(--three-suelo) 62%),
+    /* Sun on the left so the "En vivo" badge (top right) doesn't cover it */
+    radial-gradient(circle at 28% 40%, var(--accent) 0 10%, color-mix(in srgb, var(--accent) 22%, transparent) 11% 16%, transparent 17%),
     linear-gradient(to bottom, var(--surface), var(--surface-2));
+}
+
+.tarjeta__poster::before,
+.tarjeta__poster::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+}
+
+/* Mountains */
+.tarjeta__poster::before {
+  bottom: 22%;
+  height: 34%;
+  background: var(--three-suelo);
+  clip-path: polygon(0 100%, 0 55%, 14% 20%, 27% 62%, 42% 8%, 58% 58%, 70% 30%, 84% 66%, 100% 28%, 100% 100%);
+}
+
+/* Desert floor */
+.tarjeta__poster::after {
+  bottom: 0;
+  height: 24%;
+  background: color-mix(in srgb, var(--three-suelo) 65%, var(--bg));
 }
 
 .tarjeta__vivo {

@@ -67,8 +67,10 @@ canvas {
   padding: 0 var(--gutter);
 }
 
+/* Only vertical padding: `.section` is combined with `.container`, which owns the side gutter */
 .section {
-  padding: 48px 0;
+  padding-top: 48px;
+  padding-bottom: 48px;
 }
 
 .section + .section {
