@@ -20,6 +20,19 @@ export function borrarArchivo(path) {
   return api(`/archivos?path=${encodeURIComponent(path)}`, { method: 'DELETE', auth: true })
 }
 
+/** Plays an uploaded video file in a project video (Parte N); replaces any previous file */
+export async function asignarVideo(path, video) {
+  const res = await api('/archivos/asignacion', { method: 'PUT', auth: true, body: { path, video } })
+  return res.archivo
+}
+
+export function quitarAsignacion(slug, video) {
+  return api(`/archivos/asignacion?slug=${encodeURIComponent(slug)}&video=${encodeURIComponent(video)}`, {
+    method: 'DELETE',
+    auth: true,
+  })
+}
+
 /**
  * PUT straight to Firebase Storage with the signed URL.
  * XHR instead of fetch because fetch can't report upload progress.

@@ -66,10 +66,10 @@ const termometro = computed(() => ({
 const cargarTermometro = () => import('../../three/escenas/termometro.js')
 
 const leyenda = [
-  { emoji: '🧥', etiqueta: '¡Ya, suéter!', rango: 'menos de 20 °C', color: 'var(--frio)' },
-  { emoji: '🍃', etiqueta: 'Increíble', rango: '20 a 30 °C', color: 'var(--ideal)' },
-  { emoji: '😎', etiqueta: 'Se aguanta', rango: '30 a 35 °C', color: 'var(--calor)' },
-  { emoji: '🔥', etiqueta: 'Mejor ni asomarse', rango: 'más de 35 °C', color: 'var(--extremo)' },
+  { emoji: '🧥', etiqueta: '¡Ya, suéter!', rango: '<20°', color: 'var(--frio)' },
+  { emoji: '🍃', etiqueta: 'Increíble', rango: '20–30°', color: 'var(--ideal)' },
+  { emoji: '😎', etiqueta: 'Se aguanta', rango: '30–35°', color: 'var(--calor)' },
+  { emoji: '🔥', etiqueta: 'Mejor ni asomarse', rango: '>35°', color: 'var(--extremo)' },
 ]
 </script>
 
@@ -84,10 +84,7 @@ const leyenda = [
         </div>
 
         <div class="dashboard__estado" aria-live="polite">
-          <p class="dashboard__vivo">
-            <span class="badge-live">En vivo</span>
-            <span class="muted">Hermosillo, Sonora</span>
-          </p>
+          <p class="dashboard__vivo muted">Hermosillo, Sonora</p>
 
           <template v-if="estado?.estado">
             <p class="dashboard__etiqueta" :style="{ color: estado.estado.color }">
@@ -113,17 +110,18 @@ const leyenda = [
         </div>
       </div>
 
-      <ul class="dashboard__leyenda" aria-label="Qué significa cada estado">
-        <li v-for="item in leyenda" :key="item.etiqueta" :style="{ '--color': item.color }">
-          <span aria-hidden="true">{{ item.emoji }}</span>
-          <strong>{{ item.etiqueta }}</strong>
-          <span class="muted">{{ item.rango }}</span>
-        </li>
-      </ul>
-
       <div class="dashboard__historial">
         <h3>Últimas 24 horas</h3>
         <HistorialGrafica :puntos="historial?.puntos ?? []" :horas="historial?.horas ?? 24" />
+
+        <!-- Compact legend: also explains the colored bands of the chart -->
+        <ul class="dashboard__leyenda" aria-label="Qué significa cada estado">
+          <li v-for="item in leyenda" :key="item.etiqueta" :title="item.etiqueta" :style="{ '--color': item.color }">
+            <span aria-hidden="true">{{ item.emoji }}</span>
+            <span class="visually-hidden">{{ item.etiqueta }}:</span>
+            {{ item.rango }}
+          </li>
+        </ul>
       </div>
     </template>
   </div>
@@ -131,40 +129,54 @@ const leyenda = [
 
 <style scoped>
 .dashboard {
-  padding: 20px;
+  padding: 16px;
 }
 
+@media (min-width: 720px) {
+  .dashboard {
+    padding: 20px;
+  }
+}
+
+/* Thermometer beside the state even on phones, so the answer is visible without scrolling */
 .dashboard__principal {
   display: grid;
-  gap: 16px;
+  grid-template-columns: 84px 1fr;
+  gap: 12px;
   align-items: center;
 }
 
 @media (min-width: 720px) {
   .dashboard__principal {
-    grid-template-columns: 220px 1fr;
+    grid-template-columns: 200px 1fr;
+    gap: 16px;
   }
 }
 
 .dashboard__termometro {
-  height: 280px;
+  height: 190px;
+}
+
+@media (min-width: 720px) {
+  .dashboard__termometro {
+    height: 260px;
+  }
 }
 
 .dashboard__vivo {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  margin: 0;
+  font-size: 0.9rem;
 }
 
 .dashboard__etiqueta {
   font-family: var(--font-title);
-  font-size: clamp(2.4rem, 8vw, 3.4rem);
+  font-size: clamp(1.9rem, 7vw, 3.4rem);
   line-height: 1.05;
-  margin: 8px 0;
+  margin: 4px 0 6px;
 }
 
 .dashboard__temperatura {
-  font-size: 2rem;
+  font-size: clamp(1.6rem, 6vw, 2rem);
   font-weight: 800;
   margin: 0 0 6px;
 }
@@ -182,22 +194,35 @@ const leyenda = [
 .dashboard__leyenda {
   list-style: none;
   padding: 0;
-  margin: 20px 0;
-  display: grid;
-  gap: 8px;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  margin: 8px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 0.85rem;
+  color: var(--muted);
 }
 
 .dashboard__leyenda li {
-  display: grid;
-  padding: 10px 12px;
-  border-radius: var(--radius);
-  border-left: 4px solid var(--color);
-  background: var(--surface-2);
-  font-size: 0.9rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Small color swatch matching the chart band */
+.dashboard__leyenda li::before {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  background: var(--color);
+}
+
+.dashboard__historial {
+  margin-top: 20px;
 }
 
 .dashboard__historial h3 {
   font-size: 1.5rem;
+  margin-bottom: 8px;
 }
 </style>

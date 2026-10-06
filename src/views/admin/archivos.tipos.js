@@ -19,10 +19,26 @@ export const POR_EXTENSION = {
 export const ACCEPT = Object.keys(POR_EXTENSION).map((e) => `.${e}`).join(',')
 
 export const CATEGORIAS = {
-  videos: { titulo: 'Videos', maximo: 1024 * MB, dondePegar: 'en "videos" del JSON del proyecto' },
-  descargas: { titulo: 'Descargas (.zip)', maximo: 200 * MB, dondePegar: 'en "descargas" del JSON del proyecto' },
-  imagenes: { titulo: 'Imágenes', maximo: 20 * MB, dondePegar: 'como "poster" de un video o escena' },
-  modelos: { titulo: 'Modelos 3D', maximo: 100 * MB, dondePegar: 'como "modelo3d" del JSON del proyecto' },
+  videos: {
+    titulo: 'Videos',
+    maximo: 1024 * MB,
+    ayuda: 'Elige en "Usar en" qué parte del proyecto reproduce cada video. El cambio se ve en la página al instante, sin desplegar nada.',
+  },
+  descargas: {
+    titulo: 'Descargas (.zip)',
+    maximo: 200 * MB,
+    ayuda: '"Copiar para JSON" da el fragmento para pegarlo en "descargas" del JSON del proyecto.',
+  },
+  imagenes: {
+    titulo: 'Imágenes',
+    maximo: 20 * MB,
+    ayuda: '"Copiar para JSON" da el fragmento para usarla como "poster" de un video o escena.',
+  },
+  modelos: {
+    titulo: 'Modelos 3D',
+    maximo: 100 * MB,
+    ayuda: '"Copiar para JSON" da el fragmento para pegarlo como "modelo3d" del JSON del proyecto.',
+  },
 }
 
 /** { contentType, categoria } or an error message for files we can't upload */
@@ -51,7 +67,7 @@ export function fragmentoJson(archivo) {
   const titulo = sinExtension(archivo.nombre)
   switch (archivo.categoria) {
     case 'videos':
-      return JSON.stringify({ titulo, src: archivo.url }, null, 2)
+      return `"src": ${JSON.stringify(archivo.url)}`
     case 'descargas':
       return JSON.stringify({ titulo, url: archivo.url, tipo: 'zip' }, null, 2)
     case 'imagenes':

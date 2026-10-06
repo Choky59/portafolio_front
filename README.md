@@ -51,14 +51,31 @@ src/
   components/
     ThreeCanvas.vue      monta una escena: solo corre visible y respeta el movimiento reducido
     dashboards/          registro slug → dashboard en vivo
-    secciones/           secciones de la página de proyecto
-  views/          Inicio, Proyecto, 404 y admin (login y sensores)
+    secciones/           bloques de contenido (materiales, pasos, código…)
+    proyecto/            pestañas, tarjeta de video y artículo técnico
+  views/
+    proyecto/            página de proyecto: layout + una vista por pestaña
+    admin/               panel (login, sensores, archivos)
 ```
+
+## Página de proyecto
+
+Cada proyecto se divide en pestañas, y cada pestaña tiene su propia URL (se puede compartir y Atrás funciona):
+
+| Pestaña | URL | Contenido |
+|---|---|---|
+| Resumen | `/proyectos/<slug>` | Dashboard en vivo, problema/solución/resultado y retos |
+| Videos | `/proyectos/<slug>/videos` | Lista de partes (y escenas) |
+| Video | `/proyectos/<slug>/videos/<video>` | Reproductor + artículo técnico |
+| Cómo funciona | `/proyectos/<slug>/como-funciona` | Pasos + modelo 3D |
+| Materiales | `/proyectos/<slug>/materiales` | Materiales + paso a paso |
+| Código | `/proyectos/<slug>/codigo` | Código + descargas |
+
+Las pestañas sin contenido no aparecen. `ProyectoLayout.vue` carga el proyecto una sola vez y lo comparte con las pestañas (`useProyecto()`).
 
 ## Cómo agregar el Proyecto #2
 
 1. **Contenido (obligatorio).** Crea `portafolio_back/content/proyectos/<slug>.json`. El nombre del archivo es el slug: minúsculas, números y guiones. Copia `se-puede-salir.json` como base, pon `"numero": 2` y despliega el backend. El proyecto aparece solo en el inicio y en la navegación anterior/siguiente. Si el JSON tiene un error, el backend no arranca y te dice qué campo está mal.
-   - `videos`: `[{ "titulo": "Parte 1", "youtubeId": "xxxxxxxxxxx" }]`. Se muestran verticales; agrega `"vertical": false` para videos horizontales. Si está vacío, la sección no aparece.
    - `escenas`: `[{ "titulo": "...", "src": "https://cdn/...mp4", "poster": "https://cdn/...jpg" }]`
    - `modelo3d`: `{ "src": "https://cdn/...glb", "poster": "..." }` o `null`.
 2. **Portada 3D (opcional).** Crea `src/three/escenas/<slug>.js` con `setup`, `update` y, si hace falta, `setParams` y `dispose` (contrato en `src/three/stage.js`; puedes reutilizar `piezas.js`). Regístrala en `src/three/portadas.js`:
@@ -67,6 +84,30 @@ src/
    ```
    Si no la registras, se usa la portada genérica.
 3. **Dashboard en vivo (opcional).** Crea `src/components/dashboards/<Nombre>.vue`, regístralo en `src/components/dashboards/index.js` y pon `"enVivo": true` en el JSON. Desde `/admin/sensores`, asigna el sensor a ese proyecto.
+
+## Cómo agregar un video a un proyecto
+
+Cada video es un archivo propio, `portafolio_back/content/proyectos/<slug>/videos/<video>.json`. El nombre del archivo es el slug del video y forma parte de su URL. Agregar un video es agregar un archivo:
+
+```json
+{
+  "slug": "mi-video",
+  "parte": 3,
+  "titulo": "Título del video",
+  "resumen": "Una o dos líneas.",
+  "duracion": "1:30",
+  "src": "https://firebasestorage.googleapis.com/…",
+  "temas": ["ESP32", "Backend"],
+  "articulo": [
+    { "titulo": "Primer tema", "texto": "Párrafo uno.\n\nPárrafo dos.", "puntos": ["Detalle opcional"] }
+  ]
+}
+```
+
+- **Fuente del video:** `src` es el MP4. Súbelo en `/admin/archivos` y usa **Copiar para JSON**. También puedes usar `youtubeId` en su lugar. Sin ninguno de los dos, la página muestra "Video próximamente".
+- **Orden:** `parte` define el orden y no se puede repetir.
+- **Opcionales:** `poster` (imagen) y `"vertical": false` para videos horizontales.
+- **Errores:** si el archivo tiene un error, el backend no arranca y te dice qué archivo y qué campo revisar.
 
 ## Panel de administración
 

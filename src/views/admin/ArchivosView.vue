@@ -12,7 +12,7 @@ import EstadoCarga from '../../components/EstadoCarga.vue'
 import EstadoError from '../../components/EstadoError.vue'
 import { useApi } from '../../composables/useApi'
 import { mensajeError } from '../../api/client'
-import { listProyectos } from '../../api/proyectos'
+import { getProyecto, listProyectos } from '../../api/proyectos'
 import * as ArchivosApi from '../../api/archivos'
 import { ACCEPT, CATEGORIAS, clasificar, formatearTamano, fragmentoJson } from './archivos.tipos'
 
@@ -52,9 +52,26 @@ async function cargarArchivos() {
   }
 }
 
+/* Project video parts (Parte 1, Parte 2...) a video file can be assigned to */
+const partes = ref([])
+
+async function cargarPartes() {
+  partes.value = []
+  if (!slug.value) return
+  try {
+    const { proyecto } = await getProyecto(slug.value)
+    partes.value = proyecto.videos.map((v) => ({ slug: v.slug, etiqueta: `Parte ${v.parte}: ${v.titulo}` }))
+  } catch {
+    // without parts the assign selector just doesn't show
+  }
+}
+
+const etiquetaParte = (videoSlug) => partes.value.find((p) => p.slug === videoSlug)?.etiqueta ?? videoSlug
+
 watch(slug, () => {
   archivos.value = null
   cargarArchivos()
+  cargarPartes()
 }, { immediate: true })
 
 const grupos = computed(() =>
@@ -202,8 +219,28 @@ async function confirmar(archivo) {
   }
 }
 
+/** "Usar en" selector: assign this file to a part, or unassign it ('') */
+async function cambiarAsignacion(archivo, video) {
+  if (video === (archivo.asignadoA ?? '')) return
+  ocupado.value = archivo.path
+  errorAccion.value = null
+  try {
+    if (video) await ArchivosApi.asignarVideo(archivo.path, video)
+    else await ArchivosApi.quitarAsignacion(slug.value, archivo.asignadoA)
+    await cargarArchivos()
+  } catch (err) {
+    errorAccion.value = { path: archivo.path, mensaje: mensajeError(err) }
+    await cargarArchivos() // put the selector back to the real state
+  } finally {
+    ocupado.value = null
+  }
+}
+
 async function borrar(archivo) {
-  if (!confirm(`¿Borrar "${archivo.nombre}"? Si su URL está en el JSON de un proyecto, dejará de funcionar.`)) return
+  const aviso = archivo.asignadoA
+    ? `¿Borrar "${archivo.nombre}"? Se está usando en "${etiquetaParte(archivo.asignadoA)}" y esa parte quedará como "Video próximamente".`
+    : `¿Borrar "${archivo.nombre}"? Si su URL está en el JSON de un proyecto, dejará de funcionar.`
+  if (!confirm(aviso)) return
   ocupado.value = archivo.path
   errorAccion.value = null
   try {
@@ -296,7 +333,7 @@ const ESTADOS = {
 
       <section v-for="g in grupos" :key="g.clave" class="grupo" :aria-labelledby="`g-${g.clave}`">
         <h3 :id="`g-${g.clave}`">{{ g.titulo }} <span class="muted grupo__cuenta">({{ g.archivos.length }})</span></h3>
-        <p class="muted grupo__ayuda">"Copiar para JSON" da el fragmento para pegarlo {{ g.dondePegar }}.</p>
+        <p class="muted grupo__ayuda">{{ g.ayuda }}</p>
 
         <ul class="lista">
           <li v-for="a in g.archivos" :key="a.path" class="archivo card" :aria-busy="ocupado === a.path">
@@ -317,12 +354,33 @@ const ESTADOS = {
 
               <p v-if="errorAccion?.path === a.path" class="tarea__error" role="alert">{{ errorAccion.mensaje }}</p>
 
+              <!-- Videos: choose which part of the project plays this file (no URL to copy) -->
+              <div v-if="a.categoria === 'videos' && a.url && partes.length" class="archivo__usar">
+                <label :for="`usar-${a.path}`">Usar en</label>
+                <select
+                  :id="`usar-${a.path}`"
+                  class="input"
+                  :class="{ 'archivo__usar--asignado': a.asignadoA }"
+                  :value="a.asignadoA ?? ''"
+                  :disabled="ocupado === a.path"
+                  @change="cambiarAsignacion(a, $event.target.value)"
+                >
+                  <option value="">Sin asignar</option>
+                  <option v-for="p in partes" :key="p.slug" :value="p.slug">{{ p.etiqueta }}</option>
+                </select>
+              </div>
+
               <div class="archivo__acciones">
                 <template v-if="a.url">
                   <button type="button" class="btn btn--sm" @click="copiar(a.url, `url:${a.path}`)">
                     {{ copiado === `url:${a.path}` ? '¡Copiada!' : 'Copiar URL' }}
                   </button>
-                  <button type="button" class="btn btn--ghost btn--sm" @click="copiar(fragmentoJson(a), `json:${a.path}`)">
+                  <button
+                    v-if="a.categoria !== 'videos'"
+                    type="button"
+                    class="btn btn--ghost btn--sm"
+                    @click="copiar(fragmentoJson(a), `json:${a.path}`)"
+                  >
                     {{ copiado === `json:${a.path}` ? '¡Copiado!' : 'Copiar para JSON' }}
                   </button>
                   <a :href="a.url" target="_blank" rel="noopener" class="btn btn--ghost btn--sm">Abrir ↗</a>
@@ -521,6 +579,27 @@ const ESTADOS = {
 .archivo__pendiente {
   font-size: 0.9rem;
   color: var(--calor);
+}
+
+.archivo__usar {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.archivo__usar label {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.archivo__usar .input {
+  min-height: 40px;
+  padding: 6px 10px;
+}
+
+.archivo__usar--asignado {
+  border-color: var(--ideal);
+  font-weight: 600;
 }
 
 .archivo__acciones {

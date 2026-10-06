@@ -15,10 +15,19 @@ const routes = [
     },
   },
   {
-    // Title/description come from the project itself (ProyectoView)
+    // Project page: one layout (loads the project once) + one route per tab.
+    // Titles come from the project itself (useHeadSeccion in each tab).
     path: '/proyectos/:slug',
-    name: 'proyecto',
-    component: () => import('../views/ProyectoView.vue'),
+    component: () => import('../views/proyecto/ProyectoLayout.vue'),
+    meta: { pestanasProyecto: true },
+    children: [
+      { path: '', name: 'proyecto', component: () => import('../views/proyecto/ResumenView.vue') },
+      { path: 'videos', name: 'proyecto-videos', component: () => import('../views/proyecto/VideosView.vue') },
+      { path: 'videos/:video', name: 'proyecto-video', component: () => import('../views/proyecto/VideoView.vue') },
+      { path: 'como-funciona', name: 'proyecto-como-funciona', component: () => import('../views/proyecto/ComoFuncionaView.vue') },
+      { path: 'materiales', name: 'proyecto-materiales', component: () => import('../views/proyecto/MaterialesView.vue') },
+      { path: 'codigo', name: 'proyecto-codigo', component: () => import('../views/proyecto/CodigoView.vue') },
+    ],
   },
   {
     path: '/admin/login',
@@ -62,9 +71,22 @@ const routes = [
 export const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior(to, _from, savedPosition) {
+  scrollBehavior(to, from, savedPosition) {
     if (savedPosition) return savedPosition
     if (to.hash) return { el: to.hash, top: 72 }
+
+    // Switching tabs inside the same project: show the new tab from its start, right under
+    // the sticky tab bar, instead of jumping back to the 3D header. If the user hasn't
+    // scrolled into the content yet, don't move at all.
+    if (to.meta.pestanasProyecto && from.meta.pestanasProyecto && to.params.slug === from.params.slug) {
+      const BARRAS = 60 + 48 // fixed top bar + sticky tab bar
+      const contenido = document.getElementById('contenido-seccion')
+      if (contenido && contenido.getBoundingClientRect().top < BARRAS) {
+        return { el: '#contenido-seccion', top: BARRAS }
+      }
+      return false
+    }
+
     return { top: 0 }
   },
 })
