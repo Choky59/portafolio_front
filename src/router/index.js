@@ -27,10 +27,30 @@ const routes = [
     meta: { title: 'Entrar · Panel', noindex: true },
   },
   {
+    // Shared shell (session + section menu). Children inherit `requiereSesion`.
     path: '/admin',
-    name: 'admin',
-    component: () => import('../views/admin/DispositivosView.vue'),
-    meta: { title: 'Sensores · Panel', noindex: true, requiereSesion: true },
+    component: () => import('../views/admin/AdminLayout.vue'),
+    meta: { noindex: true, requiereSesion: true },
+    children: [
+      {
+        path: '',
+        name: 'admin-inicio',
+        component: () => import('../views/admin/AdminInicioView.vue'),
+        meta: { title: 'Panel' },
+      },
+      {
+        path: 'sensores',
+        name: 'admin-sensores',
+        component: () => import('../views/admin/SensoresView.vue'),
+        meta: { title: 'Sensores · Panel' },
+      },
+      {
+        path: 'archivos',
+        name: 'admin-archivos',
+        component: () => import('../views/admin/ArchivosView.vue'),
+        meta: { title: 'Archivos · Panel' },
+      },
+    ],
   },
   {
     path: '/:pathMatch(.*)*',
@@ -57,7 +77,7 @@ router.beforeEach(async (to) => {
   }
 
   if (to.name === 'login' && (await asegurar())) {
-    return { name: 'admin' }
+    return { name: 'admin-inicio' }
   }
 })
 

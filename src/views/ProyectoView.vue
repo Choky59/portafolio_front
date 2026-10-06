@@ -6,6 +6,7 @@ import ThreeCanvas from '../components/ThreeCanvas.vue'
 import EstadoCarga from '../components/EstadoCarga.vue'
 import EstadoError from '../components/EstadoError.vue'
 import VideoYoutube from '../components/VideoYoutube.vue'
+import VideoArchivo from '../components/VideoArchivo.vue'
 import VideoEscena from '../components/VideoEscena.vue'
 import ModeloDispositivo from '../components/ModeloDispositivo.vue'
 import NavProyectos from '../components/NavProyectos.vue'
@@ -86,13 +87,21 @@ watch(proyecto, (p) => {
     <section v-if="proyecto.videos.length" class="section container" aria-labelledby="s-videos">
       <h2 id="s-videos">Videos</h2>
       <div class="videos">
-        <VideoYoutube
-          v-for="video in proyecto.videos"
-          :key="video.youtubeId"
-          :titulo="video.titulo"
-          :youtube-id="video.youtubeId"
-          :vertical="video.vertical !== false"
-        />
+        <template v-for="video in proyecto.videos" :key="video.youtubeId || video.src">
+          <VideoArchivo
+            v-if="video.src"
+            :titulo="video.titulo"
+            :src="video.src"
+            :poster="video.poster"
+            :vertical="video.vertical !== false"
+          />
+          <VideoYoutube
+            v-else
+            :titulo="video.titulo"
+            :youtube-id="video.youtubeId"
+            :vertical="video.vertical !== false"
+          />
+        </template>
       </div>
     </section>
 

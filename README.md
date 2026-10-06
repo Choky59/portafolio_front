@@ -66,13 +66,23 @@ src/
    '<slug>': () => import('./escenas/<slug>.js'),
    ```
    Si no la registras, se usa la portada genérica.
-3. **Dashboard en vivo (opcional).** Crea `src/components/dashboards/<Nombre>.vue`, regístralo en `src/components/dashboards/index.js` y pon `"enVivo": true` en el JSON. Desde `/admin`, asigna el sensor a ese proyecto.
+3. **Dashboard en vivo (opcional).** Crea `src/components/dashboards/<Nombre>.vue`, regístralo en `src/components/dashboards/index.js` y pon `"enVivo": true` en el JSON. Desde `/admin/sensores`, asigna el sensor a ese proyecto.
 
 ## Panel de administración
 
-`/admin` (login en `/admin/login`). Desde ahí puedes:
-- crear un sensor y obtener su código de vinculación (válido 10 minutos y de un solo uso);
-- asignarle un proyecto;
-- generar un código nuevo para revincularlo, revocarlo o borrarlo.
+Login en `/admin/login`. Cada sección del panel es una ruta hija de `/admin`, dentro de `AdminLayout.vue`, que se encarga de la sesión y del menú. `/admin` es el inicio del panel, con una tarjeta para entrar a cada sección.
+
+Para agregar una sección:
+1. Agrega una ruta hija en `src/router/index.js`.
+2. Agrega su pestaña en `secciones` dentro de `src/views/admin/AdminLayout.vue`.
+3. Agrega su tarjeta en `src/views/admin/AdminInicioView.vue`.
+
+### Archivos (`/admin/archivos`)
+Placeholder del gestor de archivos para Firebase Storage.
+
+### Sensores (`/admin/sensores`)
+- Crear un sensor y obtener su código de vinculación (válido 10 minutos y de un solo uso).
+- Asignarle un proyecto.
+- Generar un código nuevo para revincularlo, revocarlo o borrarlo.
 
 El ESP32 canjea el código en `POST /api/devices/claim` y luego envía sus lecturas a `POST /api/telemetria` con el header `Authorization: Device <deviceId>:<secret>`.

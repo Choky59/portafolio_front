@@ -61,6 +61,9 @@ export async function api(path, { method = 'GET', body, signal, auth = false } =
 /** Friendly Spanish message for any error thrown by api() */
 export function mensajeError(err) {
   if (!err) return ''
+  if (err.key === 'SUBIDA_BLOQUEADA') {
+    return 'Firebase Storage rechazó la subida. Revisa tu conexión, o que el CORS del bucket incluya este sitio (npm run storage:cors).'
+  }
   if (err.status === 0) return 'No se pudo conectar con el servidor. Revisa tu conexión.'
   if (err.key === 'INVALID_CREDENTIALS') return 'Usuario o contraseña incorrectos.'
   if (err.status === 429) return 'Demasiados intentos. Espera unos minutos.'

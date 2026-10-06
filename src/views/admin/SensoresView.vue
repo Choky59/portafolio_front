@@ -1,19 +1,14 @@
 <script setup>
 import { computed, reactive, ref, watch } from 'vue'
-import { useRouter } from 'vue-router'
 
 import EstadoCarga from '../../components/EstadoCarga.vue'
 import EstadoError from '../../components/EstadoError.vue'
 import CodigoVinculacion from '../../components/admin/CodigoVinculacion.vue'
 
 import { useApi } from '../../composables/useApi'
-import { useSession } from '../../composables/useSession'
 import { mensajeError } from '../../api/client'
 import * as AdminApi from '../../api/admin'
 import { listProyectos } from '../../api/proyectos'
-
-const router = useRouter()
-const { usuario, cerrar } = useSession()
 
 /* Filters + list */
 const filtros = reactive({ status: '', type: '' })
@@ -92,11 +87,6 @@ function borrar(device) {
   return accion(device, () => AdminApi.deleteDevice(device.deviceId))
 }
 
-async function salir() {
-  await cerrar()
-  router.replace('/admin/login')
-}
-
 /* Formatting */
 const fecha = new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' })
 const formatear = (iso) => (iso ? fecha.format(new Date(iso)) : 'Nunca')
@@ -109,14 +99,8 @@ const titulosProyecto = computed(() =>
 </script>
 
 <template>
-  <section class="panel container">
-    <header class="panel__header">
-      <div>
-        <h1>Sensores</h1>
-        <p class="muted">Sesión de {{ usuario?.displayName ?? usuario?.username }}</p>
-      </div>
-      <button type="button" class="btn btn--ghost btn--sm" @click="salir">Cerrar sesión</button>
-    </header>
+  <section class="panel">
+    <h2 class="panel__titulo">Sensores</h2>
 
     <CodigoVinculacion
       v-if="codigo"
@@ -129,7 +113,7 @@ const titulosProyecto = computed(() =>
     />
 
     <form class="panel__nuevo card" @submit.prevent="crear">
-      <h2>Nuevo sensor</h2>
+      <h3>Nuevo sensor</h3>
       <div class="panel__campos">
         <div class="field">
           <label for="n-nombre">Nombre</label>
@@ -241,16 +225,8 @@ const titulosProyecto = computed(() =>
 </template>
 
 <style scoped>
-.panel {
-  padding-top: 90px;
-  padding-bottom: 80px;
-}
-
-.panel__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 12px;
+.panel__titulo {
+  font-size: 2.2rem;
 }
 
 .panel__codigo {
@@ -262,7 +238,7 @@ const titulosProyecto = computed(() =>
   margin-bottom: 24px;
 }
 
-.panel__nuevo h2 {
+.panel__nuevo h3 {
   font-size: 1.8rem;
 }
 
