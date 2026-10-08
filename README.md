@@ -30,7 +30,7 @@ Hay que configurar en GitHub (**Settings → Secrets and variables → Actions**
 |---|---|---|
 | Secret | `FIREBASE_SERVICE_ACCOUNT` | JSON de una cuenta de servicio con el rol *Firebase Hosting Admin* |
 | Variable | `VITE_API_URL` | URL del backend en Heroku |
-| Variable | `VITE_CV_URL`, `VITE_WHATSAPP` | Opcionales |
+| Variable | `VITE_CV_URL` | Opcional |
 | Variable | `CDN_ORIGINS` | Opcional: dónde viven los MP4 y .glb |
 
 `firebase.json` trae placeholders en la CSP (`TU-API...`, `TU-CDN...`). El workflow los llena con `scripts/preparar-firebase.mjs` antes de publicar, así que no hay que editarlos a mano.

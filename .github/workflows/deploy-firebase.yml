@@ -7,7 +7,6 @@ name: Deploy frontend (Firebase Hosting)
 #   Secret   FIREBASE_SERVICE_ACCOUNT   JSON key of a service account with the "Firebase Hosting Admin" role
 #   Variable VITE_API_URL               Backend URL, e.g. https://portafolio-choki-xxxx.herokuapp.com
 #   Variable VITE_CV_URL                (optional) link to the CV
-#   Variable VITE_WHATSAPP              (optional) number with country code, digits only
 #   Variable CDN_ORIGINS                (optional) where the MP4/GLB live, e.g. https://firebasestorage.googleapis.com
 
 on:
@@ -38,7 +37,6 @@ jobs:
         env:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
           VITE_CV_URL: ${{ vars.VITE_CV_URL }}
-          VITE_WHATSAPP: ${{ vars.VITE_WHATSAPP }}
         run: npm run build
 
       - name: Set API and CDN origins in the CSP

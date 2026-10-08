@@ -1,6 +1,7 @@
 <script setup>
 import { useTheme } from './composables/useTheme'
 import { config } from './config'
+import DialogoPropuesta from './components/DialogoPropuesta.vue'
 
 const { temaEfectivo, alternar } = useTheme()
 const anio = new Date().getFullYear()
@@ -14,6 +15,7 @@ const anio = new Date().getFullYear()
       <RouterLink to="/" class="barra__marca">{{ config.nombre }}</RouterLink>
       <div class="barra__acciones">
         <RouterLink to="/#proyectos" class="barra__link">Proyectos</RouterLink>
+        <RouterLink to="/sobre-mi" class="barra__link">Sobre mí</RouterLink>
         <button
           type="button"
           class="barra__tema"
@@ -37,12 +39,15 @@ const anio = new Date().getFullYear()
         <span class="muted">{{ config.serie }}.</span>
       </p>
       <p class="pie__links">
+        <RouterLink to="/sobre-mi">Sobre mí</RouterLink>
         <a v-if="config.cvUrl" :href="config.cvUrl" target="_blank" rel="noopener">CV</a>
         <a v-if="config.whatsappUrl" :href="config.whatsappUrl" target="_blank" rel="noopener">WhatsApp</a>
         <span class="muted">© {{ anio }}</span>
       </p>
     </div>
   </footer>
+
+  <DialogoPropuesta />
 </template>
 
 <style scoped>
@@ -82,6 +87,22 @@ const anio = new Date().getFullYear()
   font-weight: 600;
   text-decoration: none;
   padding: 8px 10px;
+}
+
+/* Small phones: brand + two links + theme button must fit in one row */
+@media (max-width: 420px) {
+  .barra__marca {
+    font-size: 1.35rem;
+  }
+
+  .barra__acciones {
+    gap: 2px;
+  }
+
+  .barra__link {
+    padding: 8px 6px;
+    font-size: 0.92rem;
+  }
 }
 
 .barra__tema {

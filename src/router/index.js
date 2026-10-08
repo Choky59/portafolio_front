@@ -11,7 +11,7 @@ const routes = [
     meta: {
       title: 'Jorge García · Proyectos de hardware y software',
       description:
-        'Ingeniero en Mecatrónica en Hermosillo. Haciendo proyectos de hardware y software hasta que una empresa me contacte.',
+        'Ingeniero en Mecatrónica en Hermosillo. Construyendo proyectos de hardware y software y abierto a nuevas oportunidades.',
     },
   },
   {
@@ -65,6 +65,16 @@ const routes = [
         meta: { title: 'Archivos · Panel' },
       },
     ],
+  },
+  {
+    path: '/sobre-mi',
+    name: 'sobre-mi',
+    component: () => import('../views/SobreMiView.vue'),
+    meta: {
+      title: 'Sobre mí · Jorge García',
+      description:
+        'Jorge Andrés García Montiel: ingeniero en Mecatrónica (Tec de Monterrey) con 8 años en Innovación y Desarrollo. Electrónica, firmware y software.',
+    },
   },
   {
     path: '/:pathMatch(.*)*',

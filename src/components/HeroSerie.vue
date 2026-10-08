@@ -33,6 +33,7 @@ const cargarDesierto = () => import('../three/escenas/desierto.js')
         >
           Escríbeme por WhatsApp
         </a>
+        <RouterLink class="btn btn--ghost" to="/sobre-mi">Conóceme</RouterLink>
         <a class="btn btn--ghost" href="#proyectos">Ver proyectos ↓</a>
       </div>
     </div>
