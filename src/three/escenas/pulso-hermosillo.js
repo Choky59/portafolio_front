@@ -16,9 +16,9 @@ import { rng } from '../piezas.js'
  * - Small groups walk from news to news on their own (simulacion.js).
  * - A click or tap on the ground drops a red marker that works like a shout: people
  *   nearby are likely to hear it and rush there, people far away less so. The
- *   previous runners go back to their groups. Only the runners feel something: on
- *   arrival they take an emotion from the news under the marker (or the closest
- *   one). Everyone else stays neutral.
+ *   previous runners go back to their groups. Only the runners feel something, and
+ *   only if the marker is on a news: they take an emotion from it right away. On
+ *   empty ground they run anyway but stay neutral. Everyone else stays neutral.
  * - News come and go (ciclo.js): a new one shows its title for a moment; after
  *   that the title only shows when the runners are near or the marker is in its
  *   circle. News nobody visits expire and another one takes their place.

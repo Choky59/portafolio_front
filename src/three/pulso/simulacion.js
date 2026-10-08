@@ -21,11 +21,12 @@ import { rng } from '../piezas.js'
  * them, and while anyone is running the groups keep away from the marker (they
  * don't pick news next to it, and leave the ones they were heading to).
  *
- * Only runners feel something: the shout is about one news (the one under the
- * marker, or the closest one to it). The moment a person hears it, it draws ONE
- * emotion from that news' distribution and starts fading to its color while it
- * runs. When it stops running it fades back to neutral. Groups walking around
- * always stay neutral.
+ * Only runners feel something, and only if the marker is on a news: the moment a
+ * person hears the shout it draws ONE emotion from that news' distribution and
+ * starts fading to its color while it runs. A shout on empty ground still makes
+ * people run, but they stay neutral. When a runner stops running (or the news under
+ * the marker goes away) it fades back to neutral. Groups walking around always stay
+ * neutral.
  *
  * puntos: [{ x, z, radio, peso, visible, noticia }]
  */
@@ -88,7 +89,7 @@ export function crearSimulacion(n, { seed = 1, limite = 30 } = {}) {
   let puntos = []
   let lim = limite
   let reloj = 0
-  /** News the last shout is about (under the marker or the closest), -1 = none */
+  /** News under the marker of the last shout, -1 = none (empty ground) */
   let noticiaGrito = -1
 
   // Spatial hash (linked lists per cell), rebuilt every step
@@ -220,24 +221,6 @@ export function crearSimulacion(n, { seed = 1, limite = 30 } = {}) {
     return cz * columnas + cx
   }
 
-  /** News under (px, pz), or else the visible one closest to it; -1 if none is visible */
-  function noticiaCercana(px, pz) {
-    const debajo = noticiaEn(px, pz)
-    if (debajo >= 0) return debajo
-    let mejor = -1
-    let mejorD = Infinity
-    for (let k = 0; k < puntos.length; k++) {
-      const p = puntos[k]
-      if (!p.visible) continue
-      const d = (p.x - px) ** 2 + (p.z - pz) ** 2
-      if (d < mejorD) {
-        mejorD = d
-        mejor = k
-      }
-    }
-    return mejor
-  }
-
   /** News whose circle contains (px, pz), or -1 */
   function noticiaEn(px, pz) {
     for (let k = 0; k < puntos.length; k++) {
@@ -307,10 +290,8 @@ export function crearSimulacion(n, { seed = 1, limite = 30 } = {}) {
       if (corre[i] && reloj > correHasta[i]) corre[i] = 0
       if (corre[i]) corredores.push(i)
     }
-    // The shout's news went away (expired or filtered): it's about the closest one now
-    if (corredores.length && (noticiaGrito < 0 || !puntos[noticiaGrito]?.visible)) {
-      noticiaGrito = noticiaCercana(guiaX, guiaZ)
-    }
+    // The news under the marker went away (expired or filtered): the runners calm down
+    if (noticiaGrito >= 0 && !puntos[noticiaGrito]?.visible) noticiaGrito = -1
 
     for (let i = 0; i < n; i++) {
       const sigue = corre[i] === 1
@@ -431,9 +412,8 @@ export function crearSimulacion(n, { seed = 1, limite = 30 } = {}) {
         llegadas.push(i)
       }
 
-      // Emotion (runners only): drawn when it hears the shout and faded in while it
-      // runs; faded out once it stops running. If the shout's news changes (it
-      // expired), it fades out and draws again from the new one.
+      // Emotion (runners of a shout on a news only): drawn when it hears the shout and
+      // faded in while it runs; faded out once it stops running or the news goes away
       const k = noticiaGrito
       const siente = sigue && k >= 0 && puntos[k].visible
       if (siente && emocionDe[i] === k && emocion[i] >= 0) {
@@ -497,7 +477,7 @@ export function crearSimulacion(n, { seed = 1, limite = 30 } = {}) {
     gritar(px, pz, cantidad) {
       guiaX = Math.max(-lim, Math.min(lim, px))
       guiaZ = Math.max(-lim, Math.min(lim, pz))
-      noticiaGrito = noticiaCercana(guiaX, guiaZ)
+      noticiaGrito = noticiaEn(guiaX, guiaZ)
 
       const candidatos = []
       for (let i = 0; i < n; i++) {
@@ -541,7 +521,7 @@ export function crearSimulacion(n, { seed = 1, limite = 30 } = {}) {
       return { x: guiaX, z: guiaZ }
     },
 
-    /** Slot of the news the current shout is about, or -1 (also when nobody is running) */
+    /** Slot of the news under the marker while people run to it, or -1 */
     get noticiaGrito() {
       return hayCorredores() ? noticiaGrito : -1
     },
