@@ -15,6 +15,12 @@ const VARIABLES = {
   montana: '--three-montana',
   saguaro: '--three-saguaro',
   vidrio: '--three-vidrio',
+  alegria: '--emo-alegria',
+  enojo: '--emo-enojo',
+  tristeza: '--emo-tristeza',
+  miedo: '--emo-miedo',
+  sorpresa: '--emo-sorpresa',
+  neutral: '--emo-neutral',
 }
 
 export function leerPaleta() {

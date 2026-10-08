@@ -6,4 +6,5 @@ import { defineAsyncComponent } from 'vue'
  */
 export const dashboards = {
   'se-puede-salir': defineAsyncComponent(() => import('./SePuedeSalir.vue')),
+  'pulso-hermosillo': defineAsyncComponent(() => import('./PulsoHermosillo.vue')),
 }

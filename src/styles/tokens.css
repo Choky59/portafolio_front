@@ -22,6 +22,14 @@
   --calor: #F4B33A;
   --extremo: #E4572E;
 
+  /* "El pulso de Hermosillo": one color per emotion (fills of the 3D figures and the legend) */
+  --emo-alegria: #F6C445;
+  --emo-enojo: #E4572E;
+  --emo-tristeza: #4F8FE8;
+  --emo-miedo: #9C6ADE;
+  --emo-sorpresa: #F07FB0;
+  --emo-neutral: #FFFFFF;
+
   /* 3D scenes */
   --three-suelo: #4A3320;
   --three-montana: #34241A;

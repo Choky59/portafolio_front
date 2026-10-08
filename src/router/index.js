@@ -20,6 +20,16 @@ const routes = [
     redirect: { path: '/', hash: '#proyectos' },
   },
   {
+    // Full-screen explorer of Proyecto #2. Before /proyectos/:slug so it isn't taken as a tab.
+    path: '/proyectos/pulso-hermosillo/explorar',
+    name: 'pulso-explorar',
+    component: () => import('../views/PulsoExplorarView.vue'),
+    meta: {
+      title: 'Explorar · El pulso de Hermosillo',
+      description: 'Una multitud que se reúne alrededor de las noticias de Hermosillo y cambia de color según lo que siente.',
+    },
+  },
+  {
     // Project page: one layout (loads the project once) + one route per tab.
     // Titles come from the project itself (useHeadSeccion in each tab).
     path: '/proyectos/:slug',

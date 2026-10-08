@@ -9,6 +9,7 @@
  */
 const portadas = {
   'se-puede-salir': () => import('./escenas/se-puede-salir.js'),
+  'pulso-hermosillo': () => import('./escenas/pulso-portada.js'),
 }
 
 export function cargarPortada(slug) {
