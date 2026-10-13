@@ -181,6 +181,14 @@ const titulosProyecto = computed(() =>
           <div><dt>Última conexión</dt><dd>{{ formatear(d.lastSeenAt) }}</dd></div>
           <div><dt>Firmware</dt><dd>{{ d.firmwareVersion ?? '—' }}</dd></div>
           <div><dt>Hardware</dt><dd>{{ d.hardwareId ?? '—' }}</dd></div>
+          <div>
+            <dt>Batería</dt>
+            <dd v-if="d.bateria" :class="{ 'sensor__bateria--baja': d.bateria.baja }">
+              {{ d.bateria.baja ? '🪫' : '🔋' }} {{ d.bateria.porcentaje }}% · {{ d.bateria.voltaje.toFixed(2) }} V
+              <span class="sensor__bateria-fecha muted">{{ formatear(d.bateria.medidaEn) }}</span>
+            </dd>
+            <dd v-else>—</dd>
+          </div>
           <div v-if="d.hasPendingClaim"><dt>Código</dt><dd>Esperando que el sensor lo canjee</dd></div>
         </dl>
 
@@ -318,6 +326,16 @@ const titulosProyecto = computed(() =>
   margin: 0;
   font-weight: 600;
   word-break: break-word;
+}
+
+.sensor__bateria--baja {
+  color: var(--extremo);
+}
+
+.sensor__bateria-fecha {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 400;
 }
 
 .sensor__acciones {

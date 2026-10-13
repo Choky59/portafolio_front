@@ -78,6 +78,17 @@ const leyenda = [
     <EstadoCarga v-if="cargando" texto="Consultando el sensor…" />
 
     <template v-else>
+      <!-- Sensor battery: top-right corner of the card -->
+      <p
+        v-if="estado?.bateria"
+        class="dashboard__bateria"
+        :class="{ 'dashboard__bateria--baja': estado.bateria.baja }"
+        :aria-label="`Batería del sensor: ${estado.bateria.porcentaje}%${estado.bateria.baja ? ', baja' : ''}`"
+        :title="`Batería del sensor: ${estado.bateria.voltaje.toFixed(2)} V`"
+      >
+        <span aria-hidden="true">{{ estado.bateria.baja ? '🪫' : '🔋' }} {{ estado.bateria.porcentaje }}%</span>
+      </p>
+
       <div class="dashboard__principal">
         <div class="dashboard__termometro">
           <ThreeCanvas :cargar="cargarTermometro" :params="termometro" />
@@ -129,6 +140,7 @@ const leyenda = [
 
 <style scoped>
 .dashboard {
+  position: relative; /* anchors the battery badge */
   padding: 16px;
 }
 
@@ -165,7 +177,27 @@ const leyenda = [
 
 .dashboard__vivo {
   margin: 0;
+  padding-right: 84px; /* room for the battery badge in the corner */
   font-size: 0.9rem;
+}
+
+.dashboard__bateria {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  margin: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.dashboard__bateria--baja {
+  color: var(--extremo);
+  border-color: var(--extremo);
 }
 
 .dashboard__etiqueta {
