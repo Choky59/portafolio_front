@@ -4,30 +4,27 @@
  * It measures its real width (ResizeObserver) and draws in real pixels, so the text keeps
  * a readable size on phones instead of shrinking with a fixed viewBox.
  */
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed } from 'vue'
 import { config } from '../../config'
+import { useGraficaInteractiva } from '../../composables/useGraficaInteractiva'
 
 const props = defineProps({
   puntos: { type: Array, default: () => [] },
   horas: { type: Number, default: 24 },
 })
 
-const contenedor = ref(null)
-const ancho = ref(600)
-let observer = null
+const M = { top: 10, right: 14, bottom: 26, left: 34 }
 
-onMounted(() => {
-  observer = new ResizeObserver(([entry]) => {
-    ancho.value = Math.max(260, Math.round(entry.contentRect.width))
-  })
-  observer.observe(contenedor.value)
+/* Real width + hover / touch / keyboard selection of the nearest point */
+const { contenedor, svg, ancho, activo, onPointer, onTeclado } = useGraficaInteractiva({
+  cantidad: () => datos.value.length,
+  posicionX: (i) => x(datos.value[i].t),
+  margen: M,
 })
-onBeforeUnmount(() => observer?.disconnect())
 
 const compacto = computed(() => ancho.value < 520)
 const W = computed(() => ancho.value)
 const H = computed(() => (compacto.value ? 200 : 240))
-const M = { top: 10, right: 14, bottom: 26, left: 34 }
 
 const datos = computed(() =>
   props.puntos.map((p) => ({ t: new Date(p.medidoEn).getTime(), v: p.temperatura, h: p.humedad ?? null }))
@@ -95,10 +92,7 @@ const ticksX = computed(() => {
   return ticks
 })
 
-/* ---------- Hover / touch / keyboard: show the value of the nearest point ---------- */
-
-const svg = ref(null)
-const activo = ref(null) // index in datos
+/* ---------- Tooltip of the hovered / selected point (activo) ---------- */
 
 const formatoMomento = new Intl.DateTimeFormat('es-MX', {
   hour: '2-digit',
@@ -106,45 +100,6 @@ const formatoMomento = new Intl.DateTimeFormat('es-MX', {
   hourCycle: 'h23',
   timeZone: config.zonaHoraria,
 })
-
-function masCercano(px) {
-  let mejor = null
-  let distancia = Infinity
-  datos.value.forEach((d, i) => {
-    const dx = Math.abs(x(d.t) - px)
-    if (dx < distancia) {
-      distancia = dx
-      mejor = i
-    }
-  })
-  return mejor
-}
-
-function onPointer(e) {
-  if (!datos.value.length || !svg.value) return
-  const px = e.clientX - svg.value.getBoundingClientRect().left
-  // Only inside the plot area
-  if (px < M.left - 8 || px > W.value - M.right + 8) {
-    activo.value = null
-    return
-  }
-  activo.value = masCercano(px)
-}
-
-function onTeclado(e) {
-  const n = datos.value.length
-  if (!n) return
-  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-    e.preventDefault()
-    const paso = e.key === 'ArrowLeft' ? -1 : 1
-    activo.value = activo.value === null ? n - 1 : Math.min(n - 1, Math.max(0, activo.value + paso))
-  } else if (e.key === 'Home' || e.key === 'End') {
-    e.preventDefault()
-    activo.value = e.key === 'Home' ? 0 : n - 1
-  } else if (e.key === 'Escape') {
-    activo.value = null
-  }
-}
 
 const seleccion = computed(() => {
   const d = activo.value === null ? null : datos.value[activo.value]

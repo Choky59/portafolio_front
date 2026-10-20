@@ -6,6 +6,7 @@ import { limpiarSesion } from './composables/useSession'
 
 import './styles/tokens.css'
 import './styles/base.css'
+import './styles/graficas.css'
 
 // An admin call answered 401 (session expired or closed elsewhere): back to login
 setOnUnauthorized(() => {

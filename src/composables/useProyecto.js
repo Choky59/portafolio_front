@@ -1,5 +1,6 @@
 import { inject, watchEffect } from 'vue'
 import { setHead } from './useHead'
+import { tieneAnalisis } from '../components/analisis'
 
 /** Key used by ProyectoLayout to share the loaded project with its tabs */
 export const PROYECTO_KEY = Symbol('proyecto')
@@ -43,6 +44,12 @@ export function pestanasDe(proyecto) {
       ruta: 'proyecto-videos',
       rutas: ['proyecto-videos', 'proyecto-video'],
       visible: !!(p.videos?.length || p.escenas?.length),
+    },
+    {
+      nombre: 'Análisis',
+      ruta: 'proyecto-analisis',
+      rutas: ['proyecto-analisis'],
+      visible: !!p.slug && tieneAnalisis(p.slug),
     },
     {
       nombre: 'Cómo funciona',

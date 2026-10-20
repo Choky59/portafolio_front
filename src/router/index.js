@@ -39,6 +39,7 @@ const routes = [
       { path: '', name: 'proyecto', component: () => import('../views/proyecto/ResumenView.vue') },
       { path: 'videos', name: 'proyecto-videos', component: () => import('../views/proyecto/VideosView.vue') },
       { path: 'videos/:video', name: 'proyecto-video', component: () => import('../views/proyecto/VideoView.vue') },
+      { path: 'analisis', name: 'proyecto-analisis', component: () => import('../views/proyecto/AnalisisView.vue') },
       { path: 'como-funciona', name: 'proyecto-como-funciona', component: () => import('../views/proyecto/ComoFuncionaView.vue') },
       { path: 'materiales', name: 'proyecto-materiales', component: () => import('../views/proyecto/MaterialesView.vue') },
       { path: 'codigo', name: 'proyecto-codigo', component: () => import('../views/proyecto/CodigoView.vue') },
