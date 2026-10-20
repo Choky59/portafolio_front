@@ -41,7 +41,7 @@ function alternar(campo, valor) {
 
 const ayuda = computed(() => {
   const accion = tactil.value ? 'Toca' : 'Haz clic en'
-  const base = `${accion} el piso para gritar desde ahí: la gente cercana lo escuchará y correrá a ver. Grita dentro de una noticia para ver su título y cómo reacciona.`
+  const base = `La gente corre a las noticias que le interesan y se pinta de lo que siente; cuando se van, regresa a la fila y llegan otras. ${accion} una noticia para ver de qué trata, o a una persona para oír qué dice.`
   if (tactil.value && props.modo === 'embebido') return `${base} Para moverte por el mapa, abre la pantalla completa.`
   if (tactil.value) return `${base} Arrastra para moverte, pellizca para acercar.`
   const zoom = props.modo === 'embebido' ? 'Ctrl/⌘ + rueda' : 'rueda'
@@ -207,6 +207,15 @@ const ayuda = computed(() => {
   min-height: 0;
 }
 
+/* Phones: the filters wrap to several rows, so the map gets its own height (the page scrolls).
+   A definite height, not just min-height: the canvas inside is 100% tall. */
+@media (max-width: 720px) {
+  .pulso--completo .escena {
+    flex: none;
+    height: max(420px, 70svh);
+  }
+}
+
 .escena__poster {
   width: 100%;
   height: 100%;
@@ -275,10 +284,23 @@ const ayuda = computed(() => {
   text-align: left;
   box-shadow: 0 3px 0 #1c1c1c;
   cursor: pointer;
-  /* Hidden until the scene shows it (a new news, or the group is near) */
+  /* Hidden until the scene shows it (only the clicked news) */
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.4s ease, background 0.2s ease;
+}
+
+/* Phones: every title is always on the map, so the cards get smaller to overlap less */
+@media (max-width: 520px) {
+  .escena :deep(.pulso-etiqueta) {
+    max-width: 136px;
+    gap: 4px;
+    padding: 4px 7px;
+    border-width: 2px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    box-shadow: 0 2px 0 #1c1c1c;
+  }
 }
 
 .escena :deep(.pulso-etiqueta--visible) {

@@ -19,7 +19,21 @@ export function radioDe(noticia) {
   return 1.6 + (noticia.relevancia ?? 0.5) * 1.6
 }
 
-export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, margen = 6 } = {}) {
+/**
+ * Slot k of `cantidad`: on a circle of radius `circulo` (evenly spaced, the first one
+ * at the top), or on the golden-angle spiral when `circulo` is 0.
+ */
+function posicion(k, cantidad, circulo, separacion) {
+  if (circulo > 0) {
+    const angulo = -Math.PI / 2 + (k / cantidad) * Math.PI * 2
+    return { x: Math.cos(angulo) * circulo, z: Math.sin(angulo) * circulo }
+  }
+  const angulo = k * 2.39996
+  const r = k === 0 ? 0 : separacion * Math.sqrt(k)
+  return { x: Math.cos(angulo) * r, z: Math.sin(angulo) * r }
+}
+
+export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, circulo = 0, margen = 6 } = {}) {
   const grupo = new THREE.Group()
 
   const blanco = new THREE.MeshToonMaterial({ color: 0xffffff })
@@ -31,10 +45,7 @@ export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, margen
 
   let limite = 0
   const puntos = Array.from({ length: cantidad }, (_, i) => {
-    const angulo = i * 2.39996
-    const r = i === 0 ? 0 : separacion * Math.sqrt(i)
-    const x = Math.cos(angulo) * r
-    const z = Math.sin(angulo) * r
+    const { x, z } = posicion(i, cantidad, circulo, separacion)
     limite = Math.max(limite, Math.abs(x) + RADIO_MAX, Math.abs(z) + RADIO_MAX)
 
     const marcador = new THREE.Group()

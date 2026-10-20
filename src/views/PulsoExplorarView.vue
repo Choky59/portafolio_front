@@ -41,4 +41,12 @@ import PulsoHermosillo from '../components/dashboards/PulsoHermosillo.vue'
   flex: 1;
   min-height: 0;
 }
+
+/* Phones: grows past the screen instead of squeezing the map under the filters */
+@media (max-width: 720px) {
+  .explorar {
+    height: auto;
+    min-height: 100svh;
+  }
+}
 </style>

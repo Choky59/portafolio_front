@@ -117,35 +117,153 @@ export function texturaSombra(THREE) {
   return new THREE.CanvasTexture(c)
 }
 
-/** The user's destination marker: a red pencil circle with a cross, like a map pin drawn by hand */
-export function texturaMarcador(THREE) {
-  const T = 128
-  const { c, g } = lienzo(T)
-  const random = rng(9)
-  const centro = T / 2
-  g.strokeStyle = '#d8402b'
-  g.lineCap = 'round'
-  for (let pasada = 0; pasada < 2; pasada++) {
-    g.lineWidth = 5 + random() * 2
-    g.globalAlpha = 0.85
-    const inicio = random() * Math.PI * 2
-    g.beginPath()
-    for (let a = 0; a <= Math.PI * 2.1; a += 0.08) {
-      const r = 44 + (random() - 0.5) * 3
-      const x = centro + Math.cos(a + inicio) * r
-      const y = centro + Math.sin(a + inicio) * r
-      if (a === 0) g.moveTo(x, y)
-      else g.lineTo(x, y)
+/* ---------------------------------- Particles ---------------------------------- */
+
+/**
+ * Little drawings the emotions give off (particulas.js), in the same style as the
+ * people: flat color, thick graphite outline. 128 px square, transparent around.
+ * Confetti is white so each piece can be tinted (instance color).
+ */
+const DIBUJOS = {
+  /** Anime anger vein: four curved strokes, each a red line over a thicker dark one */
+  vena(g) {
+    const arco = (rot) => {
+      g.save()
+      g.translate(64, 64)
+      g.rotate(rot)
+      g.beginPath()
+      g.moveTo(-34, -12)
+      g.quadraticCurveTo(-14, -14, -12, -34)
+      g.restore()
     }
+    for (const [ancho, color] of [[17, GRAFITO], [9, '#E4572E']]) {
+      g.lineWidth = ancho
+      g.strokeStyle = color
+      for (let k = 0; k < 4; k++) {
+        arco((k * Math.PI) / 2)
+        g.stroke()
+      }
+    }
+  },
+  /** Puff of steam: three round blobs */
+  vapor(g) {
+    nube(g, [[44, 76, 22], [70, 62, 26], [88, 82, 18]], '#f4f4f2')
+  },
+  /** Four-point sparkle */
+  destello(g) {
+    g.beginPath()
+    for (let k = 0; k < 8; k++) {
+      const r = k % 2 ? 14 : 50
+      const a = (k * Math.PI) / 4 - Math.PI / 2
+      g.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r)
+    }
+    g.closePath()
+    rellenar(g, '#F6C445')
+  },
+  /** Eighth note */
+  nota(g) {
+    g.fillStyle = GRAFITO
+    g.save()
+    g.translate(48, 92)
+    g.rotate(-0.4)
+    g.beginPath()
+    g.ellipse(0, 0, 18, 13, 0, 0, Math.PI * 2)
+    g.fill()
+    g.restore()
+    g.lineCap = 'round'
+    g.strokeStyle = GRAFITO
+    g.lineWidth = 9
+    g.beginPath()
+    g.moveTo(63, 88)
+    g.lineTo(63, 22)
+    g.quadraticCurveTo(80, 40, 96, 44)
     g.stroke()
-  }
-  g.lineWidth = 7
-  g.beginPath()
-  g.moveTo(centro - 16, centro - 16)
-  g.lineTo(centro + 16, centro + 16)
-  g.moveTo(centro + 16, centro - 16)
-  g.lineTo(centro - 16, centro + 16)
+  },
+  exclamacion(g) {
+    signo(g, '!')
+  },
+  interrogacion(g) {
+    signo(g, '?')
+  },
+  /** Drop: sweat (light) or tear (blue) */
+  sudor(g) {
+    gota(g, '#9fd8ff')
+  },
+  lagrima(g) {
+    gota(g, '#4F8FE8')
+  },
+  /** Gray cloud with rain under it */
+  nube(g) {
+    g.lineCap = 'round'
+    g.strokeStyle = '#4F8FE8'
+    g.lineWidth = 6
+    for (const [x, y] of [[40, 86], [62, 96], [84, 86], [52, 112], [76, 114]]) {
+      g.beginPath()
+      g.moveTo(x, y)
+      g.lineTo(x - 5, y + 12)
+      g.stroke()
+    }
+    nube(g, [[38, 58, 20], [62, 46, 26], [88, 58, 20], [62, 66, 18]], '#c6c9cf')
+  },
+  /** A strip of paper; white so it can be tinted */
+  confeti(g) {
+    g.beginPath()
+    g.rect(38, 50, 52, 28)
+    rellenar(g, '#ffffff', 7)
+  },
+}
+
+function rellenar(g, color, contorno = 9) {
+  g.lineJoin = 'round'
+  g.lineWidth = contorno
+  g.strokeStyle = GRAFITO
   g.stroke()
+  g.fillStyle = color
+  g.fill()
+}
+
+function nube(g, circulos, color) {
+  // Outline first (every blob a bit bigger), then the fill on top: one clean silhouette
+  for (const [fondo, extra] of [[GRAFITO, 5], [color, 0]]) {
+    g.fillStyle = fondo
+    for (const [x, y, r] of circulos) {
+      g.beginPath()
+      g.arc(x, y, r + extra, 0, Math.PI * 2)
+      g.fill()
+    }
+  }
+}
+
+function gota(g, color) {
+  g.beginPath()
+  g.moveTo(64, 16)
+  g.bezierCurveTo(70, 40, 96, 62, 96, 82)
+  g.arc(64, 82, 32, 0, Math.PI)
+  g.bezierCurveTo(32, 62, 58, 40, 64, 16)
+  rellenar(g, color)
+  g.fillStyle = 'rgba(255,255,255,0.8)'
+  g.beginPath()
+  g.ellipse(54, 80, 6, 10, -0.4, 0, Math.PI * 2)
+  g.fill()
+}
+
+function signo(g, texto) {
+  g.font = '900 104px system-ui, sans-serif'
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.lineJoin = 'round'
+  g.lineWidth = 16
+  g.strokeStyle = '#ffffff'
+  g.strokeText(texto, 64, 68)
+  g.fillStyle = GRAFITO
+  g.fillText(texto, 64, 68)
+}
+
+export const TIPOS_PARTICULA = Object.keys(DIBUJOS)
+
+export function texturaParticula(THREE, tipo) {
+  const { c, g } = lienzo(128)
+  DIBUJOS[tipo](g)
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   return t

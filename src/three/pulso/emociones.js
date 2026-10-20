@@ -33,9 +33,6 @@ export const FRASES = {
   neutral: ['ok', 'ah, ok', 'mmm', 'sale', 'a ver'],
 }
 
-/** What the ones who hear the user's shout answer */
-export const GRITOS = ['¡a ver, a ver!', '¿qué pasó?', '¡vamos!', '¡voy!', '¿dónde?', '¡espérenme!']
-
 /** Emotion with the highest share in sentimiento.emociones */
 export function emocionDominante(noticia) {
   const emociones = noticia?.sentimiento?.emociones ?? {}
