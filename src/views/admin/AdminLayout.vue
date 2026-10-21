@@ -13,6 +13,7 @@ const secciones = [
   { nombre: 'Inicio', ruta: { name: 'admin-inicio' } },
   { nombre: 'Sensores', ruta: { name: 'admin-sensores' } },
   { nombre: 'Archivos', ruta: { name: 'admin-archivos' } },
+  { nombre: 'Análisis', ruta: { name: 'admin-analisis' } },
 ]
 
 async function salir() {

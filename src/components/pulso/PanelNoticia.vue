@@ -15,15 +15,22 @@ const emit = defineEmits(['cerrar'])
 const fuente = computed(() => FUENTES.find((f) => f.clave === props.noticia.fuente?.tipo))
 
 const fecha = computed(() =>
-  new Intl.DateTimeFormat('es-MX', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'America/Hermosillo',
-  }).format(new Date(props.noticia.fecha))
+  props.noticia.fecha
+    ? new Intl.DateTimeFormat('es-MX', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+        timeZone: 'America/Hermosillo',
+      }).format(new Date(props.noticia.fecha))
+    : 'Sin fecha'
 )
 
 const emociones = computed(() =>
-  EMOCIONES.map((e) => ({ ...e, valor: props.noticia.sentimiento?.emociones?.[e.clave] ?? 0 })).filter(
+  // In real notes "neutral" is the share of people the news doesn't move (1 − intensity)
+  EMOCIONES.map((e) => ({
+    ...e,
+    etiqueta: e.clave === 'neutral' ? 'Sin reaccionar' : e.etiqueta,
+    valor: props.noticia.sentimiento?.emociones?.[e.clave] ?? 0,
+  })).filter(
     (e) => e.valor > 0
   )
 )
@@ -48,6 +55,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
     <h3 id="panel-titulo" class="panel__titulo">{{ noticia.titulo }}</h3>
     <p class="panel__fecha muted">{{ fecha }} · {{ noticia.categoria }}</p>
     <p>{{ noticia.resumen }}</p>
+    <p v-if="noticia.enlace" class="panel__enlace">
+      <a :href="noticia.enlace" target="_blank" rel="noopener">
+        {{ noticia.enlace.includes('youtu') ? '▶ Ver en el minuto exacto' : 'Leer la nota' }} ↗
+      </a>
+    </p>
 
     <div class="panel__bloque">
       <p class="panel__subtitulo">Cómo se sintió la gente</p>

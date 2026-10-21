@@ -33,8 +33,12 @@ export const FRASES = {
   neutral: ['ok', 'ah, ok', 'mmm', 'sale', 'a ver'],
 }
 
-/** Emotion with the highest share in sentimiento.emociones */
+/**
+ * The news' main emotion: the analysis' own (never neutral) when it comes with one,
+ * else the highest share in sentimiento.emociones
+ */
 export function emocionDominante(noticia) {
+  if (noticia?.emocionDominante) return noticia.emocionDominante
   const emociones = noticia?.sentimiento?.emociones ?? {}
   let mejor = 'neutral'
   let max = -1

@@ -75,6 +75,12 @@ const routes = [
         component: () => import('../views/admin/ArchivosView.vue'),
         meta: { title: 'Archivos · Panel' },
       },
+      {
+        path: 'analisis',
+        name: 'admin-analisis',
+        component: () => import('../views/admin/AnalisisNoticiasView.vue'),
+        meta: { title: 'Análisis de noticias · Panel' },
+      },
     ],
   },
   {
