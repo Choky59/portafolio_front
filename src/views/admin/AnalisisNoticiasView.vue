@@ -71,9 +71,10 @@ const busquedas = computed(() => {
 const costoTotal = computed(() => costoElegidas.value + (buscarWeb.value ? busquedas.value.usd : 0))
 
 const presupuesto = ref(1)
+const presupuestoMax = computed(() => pendientes.value?.resumen?.presupuestoMax ?? 500)
 watch(costoTotal, (c) => {
   // Suggest the estimate plus 30% (rounded up to 10 cents), at least 10 cents
-  presupuesto.value = Math.max(0.1, Math.ceil(c * 1.3 * 10) / 10)
+  presupuesto.value = Math.min(presupuestoMax.value, Math.max(0.1, Math.ceil(c * 1.3 * 10) / 10))
 })
 
 /* Start a job */
@@ -261,7 +262,7 @@ const progreso = (t) => (t.totalCapturas ? Math.round(((t.progreso.hechas + t.pr
       </label>
       <label class="presupuesto">
         Detener si se gastan más de USD
-        <input v-model.number="presupuesto" type="number" min="0.01" max="50" step="0.1" />
+        <input v-model.number="presupuesto" type="number" min="0.01" :max="presupuestoMax" step="0.1" />
       </label>
       <p v-if="errorCrear" class="error">{{ mensajeError(errorCrear) }}</p>
       <button type="button" class="btn" :disabled="creando || !elegidas.length || !(presupuesto > 0)" @click="analizar">
