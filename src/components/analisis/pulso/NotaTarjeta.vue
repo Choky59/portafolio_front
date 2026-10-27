@@ -16,6 +16,8 @@ import {
 const props = defineProps({
   nota: { type: Object, required: true },
   nombreFuente: { type: String, default: '' },
+  /** The full analysis starts expanded (the news modal of the crowd) */
+  abierto: { type: Boolean, default: false },
 })
 const emit = defineEmits(['filtrar'])
 
@@ -112,7 +114,7 @@ const enlaceCita = (c) => (esVideo.value && c.segundo !== null ? n.value.enlace.
       </ul>
     </div>
 
-    <details class="nota__detalle">
+    <details class="nota__detalle" :open="abierto">
       <summary>Ver el análisis completo</summary>
 
       <p>{{ n.resumen }}</p>

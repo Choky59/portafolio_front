@@ -1,4 +1,3 @@
-import { MapControls } from 'three/examples/jsm/controls/MapControls.js'
 import { crearSimulacion } from '../pulso/simulacion.js'
 import { crearMultitud } from '../pulso/multitud.js'
 import { crearNoticias } from '../pulso/noticias.js'
@@ -15,37 +14,48 @@ import { rng } from '../piezas.js'
  * emotion each news item causes. Drawn like pencil on paper: white world, white
  * people, black outlines; the only color is the emotion.
  *
- * - Everyone starts lined up in a grid spread over the whole view. The map has 5–6 news,
- *   evenly spaced on a circle around it; small groups spread over them by
+ * - Everyone starts lined up in a grid spread over the whole view. The map has up to
+ *   5–6 news, each at a free spot anywhere on it; small groups spread over them by
  *   relevance, running until they get to theirs, and stay a while; now and then a
- *   group moves to another news (simulacion.js). Titles stay hidden until a news
- *   is clicked.
+ *   group moves to another news (simulacion.js).
  * - Stepping into a news' circle, each person takes ONE emotion from that news'
  *   mix, so a controversial news gathers a crowd of several colors. Moving to
  *   another news, the color fades on the way and a new one is drawn there.
- * - News change in rounds (ciclo.js): after a short while they all leave together,
- *   everyone runs back to its grid spot and, once they're all in line, the next
- *   5–6 pop in at once and everyone runs to pick one.
+ * - The news keep changing, one at a time (ciclo.js): once the tour has left a news
+ *   behind, it goes away and the next one pops in somewhere else. The "grid" command
+ *   sends everyone back to the grid and the map fills up again.
+ * - The camera follows the tour, the same on phones and desktop, and only the tour
+ *   moves it (no pan or zoom by hand): the whole map while the crowd runs to the first
+ *   news, then a zoom into each news (8 s, or the Anterior / Siguiente buttons). An open
+ *   news keeps the camera on it. The focused news' title and emotions are drawn by the
+ *   Vue component (onFoco).
  * - A click or tap on a news (its circle or its card) opens it; on a person, that
  *   person says something; on empty ground it closes the open news.
  *
  * params = {
  *   noticias,                      array with the shape of src/data/pulsoDemo.js
- *   filtro: { emocion, fuente, categoria },
  *   seleccionId,                   highlighted news (or null)
- *   modo: 'embebido' | 'completo', embedded: the mouse wheel only zooms with Ctrl/⌘
- *                                  and touch devices don't pan (the page must scroll)
+ *   comando: { tipo: 'anterior' | 'siguiente' | 'fila', n }, a new n runs it once (the buttons)
  *   onSeleccion(id | null),        click on a news card, its circle or the empty ground
+ *   onFoco({ noticia, atras, ultima, recorrido }), the tour changed: the news the camera is on
+ *                                  (null: whole map), whether there's a previous one, whether it's
+ *                                  the last one never shown, and whether the tour is running.
+ *                                  More news appended to `noticias` join the queue (the map isn't reset).
  * }
  */
 const ELEVACION = (55 * Math.PI) / 180
 /** Starting distance of the camera; farther if needed so the whole circle of news fits */
 const DISTANCIA_INICIAL = 62
-/** News on the map at once, and the radius of the circle they sit on */
+/** News on the map at once, and the radius of the area they show up in */
 const ACTIVAS = { web: 6, movil: 5 }
 const CIRCULO = { web: 11, movil: 9.5 }
 /** Room kept around the circle when framing it: the news' own circles and their cards */
 const MARCO = 6
+/** Zoom into one news: room around its circle (its crowd and card), and the closest the camera gets */
+const MARCO_ZOOM = 3.4
+const DISTANCIA_ZOOM_MIN = 16
+/** How fast the camera eases to where it's going (1/s) */
+const SUAVIDAD = 1.8
 /** People on the map */
 const PERSONAS = { web: 180, movil: 110 }
 /**
@@ -55,7 +65,7 @@ const PERSONAS = { web: 180, movil: 110 }
 const BORDE = { lados: 1.6, fondo: 3.2, frente: 1.2 }
 
 export default function crearPulsoHermosillo() {
-  let THREE, camera, canvas, controls, sim, multitud, particulas, noticias, ciclo, capa, paleta, scene
+  let THREE, camera, canvas, sim, multitud, particulas, noticias, ciclo, capa, paleta, scene
   let params = {}
   let ancho = 1
   let alto = 1
@@ -63,7 +73,12 @@ export default function crearPulsoHermosillo() {
   let reducido = false
   let tiempoFrase = 0
   let radioCirculo = CIRCULO.web
-  let camaraMovida = false // once the user pans or zooms, a resize no longer reframes
+  let distanciaAncha = DISTANCIA_INICIAL
+  let mira = null // point the camera looks at
+  let destino = null
+  let enmarcado = false
+  let ultimoComando = null
+  let firmaFoco = ''
   let arranco = false // the crowd has moved (until then a new grid area moves everyone at once)
   const quitar = []
   const random = rng(11)
@@ -72,31 +87,80 @@ export default function crearPulsoHermosillo() {
     return (lista ?? []).map((n) => n.id).join('|')
   }
 
-  /** New list of news: back to the queue, the map fills up again */
+  /** New list of news: back to the queue, the map fills up again (in ciclo.update) */
   function montarNoticias(lista) {
-    const nuevas = ciclo.reiniciar(lista ?? [], params.filtro ?? {})
-    for (const k of nuevas) capa.escribir(k)
+    ciclo.reiniciar(lista ?? [])
     sim.actualizarVisibilidad()
     firmaNoticias = firma(lista)
-    if (reducido) sim.asentar()
   }
 
-  /** Camera at the starting angle, far enough for the whole circle to fit the view */
+  /** The new list is the old one plus more at the end ("cargar más") */
+  function esAmpliacion(lista) {
+    const antes = firmaNoticias
+    const ahora = firma(lista)
+    return !!antes && ahora.length > antes.length && ahora.startsWith(`${antes}|`)
+  }
+
+  /** Distance at which `alcance` ground units around the target fit the view (narrow screens: the width decides) */
+  function distanciaPara(alcance) {
+    const tan = Math.tan(((camera.fov / 2) * Math.PI) / 180)
+    return Math.max(alcance / tan, alcance / (tan * camera.aspect))
+  }
+
+  function colocar(x, z, d) {
+    camera.position.set(x, Math.sin(ELEVACION) * d, z + Math.cos(ELEVACION) * d)
+    mira.set(x, 0, z)
+    camera.lookAt(mira)
+  }
+
+  /**
+   * The whole circle in view at the starting angle. The grid always spreads over that
+   * view, even when the camera is zoomed into a news (it's put back where it was).
+   */
   function encuadrar() {
-    const mitad = ((camera.fov / 2) * Math.PI) / 180
-    const alcance = radioCirculo + MARCO
-    const paraAlto = alcance / Math.tan(mitad)
-    const paraAncho = alcance / (Math.tan(mitad) * camera.aspect)
-    const d = Math.max(DISTANCIA_INICIAL, paraAlto, paraAncho)
-    camera.position.set(0, Math.sin(ELEVACION) * d, Math.cos(ELEVACION) * d)
-    camera.lookAt(0, 0, 0)
-    if (controls) {
-      controls.target.set(0, 0, 0)
-      controls.maxDistance = Math.max(110, d * 1.3)
-      controls.update()
-    }
+    const d = Math.max(DISTANCIA_INICIAL, distanciaPara(radioCirculo + MARCO))
+    distanciaAncha = d
+    const antes = enmarcado && !reducido && { pos: camera.position.clone(), mira: mira.clone() }
+    colocar(0, 0, d)
     // Reduced motion skips this: the crowd is already settled at its news (sim.asentar)
     sim.setFila(areaVisible(), { mover: !arranco && !reducido })
+    // The tour eases back by itself (reduced motion has no tour: it stays on the whole map)
+    if (antes) {
+      camera.position.copy(antes.pos)
+      mira.copy(antes.mira)
+      camera.lookAt(mira)
+    }
+    enmarcado = true
+  }
+
+  /** The tour: eases the camera to the news whose turn it is (or the open one), or to the whole map */
+  function focoActual(turno) {
+    const abierta = noticias.puntos.find((p) => p.activa && params.seleccionId && p.noticia.id === params.seleccionId)
+    const foco = abierta ?? noticias.puntos[turno]
+    return foco?.activa ? foco : null
+  }
+
+  /** Tells the Vue component which news the camera is on (only when it changes) */
+  function avisarFoco(foco, { atras, ultima, recorrido }) {
+    const clave = `${foco?.noticia.id ?? ''}|${atras}|${ultima}|${recorrido}`
+    if (clave === firmaFoco) return
+    firmaFoco = clave
+    params.onFoco?.({ noticia: foco?.noticia ?? null, atras, ultima, recorrido })
+  }
+
+  function guiarCamara(dt, foco) {
+    const enFoco = !!foco
+    const x = enFoco ? foco.x : 0
+    const z = enFoco ? foco.z : 0
+    const d = enFoco ? Math.max(DISTANCIA_ZOOM_MIN, distanciaPara(foco.radio + MARCO_ZOOM)) : distanciaAncha
+
+    const k = 1 - Math.exp(-SUAVIDAD * Math.min(dt, 0.1))
+    mira.x += (x - mira.x) * k
+    mira.z += (z - mira.z) * k
+    mira.y += (0 - mira.y) * k
+    destino.set(x, Math.sin(ELEVACION) * d, z + Math.cos(ELEVACION) * d)
+    camera.position.lerp(destino, k)
+    camera.lookAt(mira)
   }
 
   /**
@@ -175,11 +239,10 @@ export default function crearPulsoHermosillo() {
     setup(ctx) {
       ;({ THREE, camera, canvas, paleta, scene } = ctx)
       params = ctx.params ?? {}
+      ultimoComando = params.comando?.n ?? null
       reducido = ctx.reducedMotion
 
       const movil = window.matchMedia('(max-width: 720px)').matches
-      const tactil = window.matchMedia('(pointer: coarse)').matches
-      const embebido = params.modo !== 'completo'
 
       // Lights for the toon material: soft fill + one sun from the upper left
       scene.add(new THREE.HemisphereLight(0xffffff, 0xd8d8d8, 1.6))
@@ -196,13 +259,15 @@ export default function crearPulsoHermosillo() {
       scene.add(suelo)
 
       raycaster = new THREE.Raycaster()
+      mira = new THREE.Vector3()
+      destino = new THREE.Vector3()
       plano = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
       enSuelo = new THREE.Vector3()
 
       // One slot per news, evenly spaced on a circle
       const activasMax = movil ? ACTIVAS.movil : ACTIVAS.web
       radioCirculo = movil ? CIRCULO.movil : CIRCULO.web
-      noticias = crearNoticias(THREE, activasMax, { circulo: radioCirculo })
+      noticias = crearNoticias(THREE, activasMax, { circulo: radioCirculo, area: radioCirculo, random })
       scene.add(noticias.grupo)
 
       sim = crearSimulacion(movil ? PERSONAS.movil : PERSONAS.web, {
@@ -227,7 +292,7 @@ export default function crearPulsoHermosillo() {
       })
       capa.setNoticias(noticias.puntos)
 
-      ciclo = crearCiclo(noticias, { activasMax, random, fijo: reducido })
+      ciclo = crearCiclo(noticias, { random, fijo: reducido })
       montarNoticias(params.noticias)
 
       camera.fov = 30
@@ -235,32 +300,8 @@ export default function crearPulsoHermosillo() {
       camera.far = 400
       camera.updateProjectionMatrix()
 
-      // Pan / zoom. Embedded on touch: no controls, so a finger scrolls the page.
-      if (!(embebido && tactil)) {
-        controls = new MapControls(camera, canvas)
-        controls.enableDamping = true
-        controls.dampingFactor = 0.08
-        controls.screenSpacePanning = false
-        controls.minDistance = 10
-        controls.minPolarAngle = 0.25
-        controls.maxPolarAngle = 1.15
-        controls.addEventListener('start', () => (camaraMovida = true))
-
-        if (embebido) {
-          // The controls listen for the wheel on the canvas: stopping the event on the way
-          // down (capture on the parent) keeps it from them, and the page still scrolls.
-          escuchar(
-            canvas.parentElement,
-            'wheel',
-            (e) => {
-              if (!e.ctrlKey && !e.metaKey) e.stopPropagation()
-            },
-            { capture: true }
-          )
-        }
-      } else {
-        canvas.style.touchAction = 'pan-y'
-      }
+      // No pan or zoom by hand (the tour moves the camera): a finger scrolls the page
+      canvas.style.touchAction = 'pan-y'
 
       // Click vs drag: only a short, still press counts as a click (dragging pans the map)
       let inicio = null
@@ -284,50 +325,43 @@ export default function crearPulsoHermosillo() {
     setParams(next) {
       params = next ?? {}
       if (!sim) return
-      if (firma(params.noticias) !== firmaNoticias) {
+      if (esAmpliacion(params.noticias)) {
+        ciclo.agregar(params.noticias.slice(firmaNoticias.split('|').length))
+        firmaNoticias = firma(params.noticias)
+      } else if (firma(params.noticias) !== firmaNoticias) {
         montarNoticias(params.noticias)
         return
       }
-      if (noticias.setFiltro(params.filtro ?? {})) {
-        sim.actualizarVisibilidad()
-        // The next round brings news that match the filter
-        ciclo.terminarRonda()
-      }
       noticias.setSeleccion(params.seleccionId ?? null)
+      const c = params.comando
+      if (c && c.n !== ultimoComando) {
+        ultimoComando = c.n
+        if (c.tipo === 'anterior') ciclo.anterior()
+        else if (c.tipo === 'siguiente') ciclo.siguiente()
+        else if (c.tipo === 'fila') ciclo.aFila()
+      }
     },
 
     resize(w, h) {
       ancho = w
       alto = h
-      if (camera && !camaraMovida) encuadrar()
+      if (camera) encuadrar()
     },
 
     update(dt, t) {
-      if (controls) {
-        controls.update()
-        // Keep the view over the crowd
-        const lim = sim.limite
-        const tgt = controls.target
-        const cx = Math.max(-lim, Math.min(lim, tgt.x))
-        const cz = Math.max(-lim, Math.min(lim, tgt.z))
-        if (cx !== tgt.x || cz !== tgt.z) {
-          camera.position.x += cx - tgt.x
-          camera.position.z += cz - tgt.z
-          tgt.x = cx
-          tgt.z = cz
-        }
-      }
-
-      // Rounds of news: when they leave everyone stands still; when the next ones come, everyone picks one
-      const { nuevas, salieron, mostrar } = ciclo.update(dt, {
+      // News come and go: whoever loses its news picks another one
+      const estado = ciclo.update(dt, {
         seleccionId: params.seleccionId ?? null,
-        filtro: params.filtro ?? {},
         listos: reducido || sim.enFila(),
       })
+      const { nuevas, salieron, mostrar, turno } = estado
       for (const k of nuevas) capa.escribir(k)
       if (salieron.length || nuevas.length) sim.actualizarVisibilidad()
       if (nuevas.length && reducido) sim.asentar() // no animation: jump to the new arrangement
       capa.setEstado(params.seleccionId ?? null, mostrar)
+      const foco = focoActual(turno)
+      avisarFoco(foco, estado)
+      if (!reducido && dt > 0) guiarCamara(dt, foco)
 
       if (!reducido && dt > 0) {
         arranco = true
@@ -352,7 +386,6 @@ export default function crearPulsoHermosillo() {
 
     dispose() {
       for (const fn of quitar) fn()
-      controls?.dispose()
       capa?.dispose()
     },
   }

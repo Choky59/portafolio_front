@@ -2,9 +2,10 @@ import { pasaFiltro } from './emociones.js'
 import { GRAFITO, texturaCirculo } from './lapiz.js'
 
 /**
- * Places where news show up: fixed slots on a golden-angle spiral (slot 0 in the
- * center). A slot can be empty or hold one news item, drawn as a pencil circle on
- * the paper (its size depends on relevance) with a small white pedestal.
+ * Places where news show up: slots, each empty or holding one news item, drawn as a
+ * pencil circle on the paper (its size depends on relevance) with a small white
+ * pedestal. Slots sit on a golden-angle spiral (slot 0 in the center) or a circle; with
+ * `area`, each news that comes in takes a free spot anywhere within that radius.
  * News pop in and shrink out (`update` animates it). The HTML card with the title
  * lives in burbujas.js.
  *
@@ -14,6 +15,9 @@ import { GRAFITO, texturaCirculo } from './lapiz.js'
  */
 const SEPARACION = 7
 const RADIO_MAX = 3.2
+/** With `area`: news centers at least this far apart (their circles and crowds don't overlap) */
+const SEPARACION_MIN = RADIO_MAX * 2 + 1
+const INTENTOS = 40
 
 export function radioDe(noticia) {
   return 1.6 + (noticia.relevancia ?? 0.5) * 1.6
@@ -33,7 +37,7 @@ function posicion(k, cantidad, circulo, separacion) {
   return { x: Math.cos(angulo) * r, z: Math.sin(angulo) * r }
 }
 
-export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, circulo = 0, margen = 6 } = {}) {
+export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, circulo = 0, area = 0, random = Math.random, margen = 6 } = {}) {
   const grupo = new THREE.Group()
 
   const blanco = new THREE.MeshToonMaterial({ color: 0xffffff })
@@ -77,6 +81,30 @@ export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, circul
     }
   })
 
+  if (area > 0) limite = Math.max(limite, area + RADIO_MAX)
+
+  /** A spot within `area` away from the other news on the map (or the one farthest from them) */
+  function lugarLibre(k) {
+    let mejor = null
+    let mejorD = -1
+    for (let t = 0; t < INTENTOS; t++) {
+      const a = random() * Math.PI * 2
+      const r = area * Math.sqrt(random())
+      const x = Math.cos(a) * r
+      const z = Math.sin(a) * r
+      let d = Infinity
+      puntos.forEach((q, j) => {
+        if (j !== k && q.marcador.visible) d = Math.min(d, Math.hypot(q.x - x, q.z - z))
+      })
+      if (d >= SEPARACION_MIN) return { x, z }
+      if (d > mejorD) {
+        mejorD = d
+        mejor = { x, z }
+      }
+    }
+    return mejor
+  }
+
   let seleccionId = null
   let filtro = {}
 
@@ -95,6 +123,12 @@ export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, circul
     /** Puts a news item in an empty slot (it pops in) */
     poner(k, noticia) {
       const p = puntos[k]
+      if (area > 0) {
+        const { x, z } = lugarLibre(k)
+        p.x = x
+        p.z = z
+        p.marcador.position.set(x, 0, z)
+      }
       if (p.circulo) {
         p.marcador.remove(p.circulo)
         p.circulo.geometry.dispose()

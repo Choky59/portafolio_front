@@ -8,27 +8,14 @@ import { computed } from 'vue'
 import EstadoCarga from '../../EstadoCarga.vue'
 import EstadoError from '../../EstadoError.vue'
 import BarraApilada from './BarraApilada.vue'
+import Temas from './Temas.vue'
+import Totales from './Totales.vue'
 import { useApi } from '../../../composables/useApi'
 import { getResumen } from '../../../api/pulso'
-import { AMBITOS, TIPOS, colorEmocion, dia, fecha, nombreEmocion, nombreSubtema, nombreTema, segmentosEmocion, EMOCIONES } from './catalogo'
+import { AMBITOS, TIPOS, colorEmocion, dia, nombreEmocion, segmentosEmocion, EMOCIONES } from './catalogo'
 
 const emit = defineEmits(['ir'])
 const { data, error, loading, reload } = useApi((signal) => getResumen(signal))
-
-const fmt = new Intl.NumberFormat('es-MX')
-
-const tarjetas = computed(() => {
-  const t = data.value?.totales
-  if (!t) return []
-  return [
-    { titulo: 'Noticias analizadas', valor: fmt.format(t.notas) },
-    // The same happening in several outlets counts once
-    ...(t.eventos ? [{ titulo: 'Sucesos distintos', valor: fmt.format(t.eventos) }, { titulo: 'Contados por 2+ medios', valor: fmt.format(t.multimedio ?? 0) }] : []),
-    { titulo: 'Programas y notas revisados', valor: fmt.format(t.capturas) },
-    { titulo: 'Horas de audio y video', valor: fmt.format(t.horasAnalizadas) },
-    { titulo: 'Periodo', valor: t.desde ? `${fecha(t.desde)} – ${fecha(t.hasta)}` : '—' },
-  ]
-})
 
 /** Average emotion mix of all notes, as % */
 const sentir = computed(() =>
@@ -43,8 +30,6 @@ const dominante = computed(() => {
 })
 
 const temas = computed(() => data.value?.temas ?? [])
-const maxTema = computed(() => Math.max(1, ...temas.value.map((t) => t.notas)))
-const subtemaPrincipal = (t) => Object.entries(t.subtemas).sort((a, b) => b[1] - a[1])[0]?.[0]
 
 const dias = computed(() => data.value?.dias ?? [])
 const maxDia = computed(() => Math.max(1, ...dias.value.map((d) => d.notas)))
@@ -69,12 +54,7 @@ const repartos = computed(() => {
   <p v-else-if="data && !data.totales.notas" class="muted">Todavía no hay noticias analizadas.</p>
 
   <div v-else-if="data" class="panorama">
-    <ul class="tarjetas">
-      <li v-for="t in tarjetas" :key="t.titulo" class="tarjeta card">
-        <span class="tarjeta__titulo">{{ t.titulo }}</span>
-        <strong class="tarjeta__valor">{{ t.valor }}</strong>
-      </li>
-    </ul>
+    <Totales :totales="data.totales" sucesos />
 
     <section class="bloque" aria-labelledby="p-sentir">
       <h2 id="p-sentir" class="bloque__titulo">¿Cómo se siente la ciudad?</h2>
@@ -88,20 +68,7 @@ const repartos = computed(() => {
     <section class="bloque" aria-labelledby="p-temas">
       <h2 id="p-temas" class="bloque__titulo">¿De qué se habla?</h2>
       <p class="muted">Cada barra es un tema, repartida según la emoción que domina en cada una de sus noticias. Toca uno para ver sus notas.</p>
-      <ul class="temas">
-        <li v-for="t in temas" :key="t.tema">
-          <button type="button" class="tema" @click="emit('ir', 'noticias', { tema: t.tema })">
-            <span class="tema__nombre">
-              {{ nombreTema(t.tema) }}
-              <small v-if="subtemaPrincipal(t)" class="muted">· sobre todo {{ nombreSubtema(subtemaPrincipal(t)).toLowerCase() }}</small>
-            </span>
-            <span class="tema__barra" :style="{ width: `${(t.notas / maxTema) * 100}%` }">
-              <BarraApilada :segmentos="segmentosEmocion(t.emociones)" :alto="16" />
-            </span>
-            <strong class="tema__n">{{ t.notas }}</strong>
-          </button>
-        </li>
-      </ul>
+      <Temas :temas="temas" @tema="(tema) => emit('ir', 'noticias', { tema })" />
     </section>
 
     <section v-if="dias.length" class="bloque" aria-labelledby="p-dias">
@@ -165,40 +132,6 @@ const repartos = computed(() => {
   margin-bottom: 8px;
 }
 
-.tarjetas {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  display: grid;
-  gap: 10px;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (min-width: 900px) {
-  .tarjetas {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-.tarjeta {
-  display: grid;
-  gap: 2px;
-  padding: 12px 14px;
-  border-left: 4px solid var(--accent);
-}
-
-.tarjeta__titulo {
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--muted);
-}
-
-.tarjeta__valor {
-  font-size: 1.4rem;
-  line-height: 1.2;
-}
-
-.temas,
 .reparto {
   list-style: none;
   padding: 0;
@@ -207,7 +140,6 @@ const repartos = computed(() => {
   gap: 4px;
 }
 
-.tema,
 .reparto__fila {
   display: grid;
   align-items: center;
@@ -223,40 +155,8 @@ const repartos = computed(() => {
   cursor: pointer;
 }
 
-.tema {
-  grid-template-columns: 1fr auto;
-  grid-template-areas: 'nombre n' 'barra barra';
-}
-
-@media (min-width: 720px) {
-  .tema {
-    grid-template-columns: minmax(180px, 34%) 1fr 40px;
-    grid-template-areas: 'nombre barra n';
-  }
-}
-
-.tema:hover,
 .reparto__fila:hover {
   background: var(--surface);
-}
-
-.tema__nombre {
-  grid-area: nombre;
-  font-weight: 700;
-}
-
-.tema__nombre small {
-  font-weight: 400;
-}
-
-.tema__barra {
-  grid-area: barra;
-  min-width: 8px;
-}
-
-.tema__n {
-  grid-area: n;
-  text-align: right;
 }
 
 .dias {

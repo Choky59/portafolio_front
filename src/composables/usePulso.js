@@ -1,11 +1,10 @@
-import { computed, reactive, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { noticiasDemo } from '../data/pulsoDemo'
-import { pasaFiltro } from '../three/pulso/emociones'
 import { getMultitud } from '../api/pulso'
 import { nombreTema } from '../components/analisis/pulso/catalogo'
 
 /**
- * News + filters for "El pulso de Hermosillo".
+ * News for "El pulso de Hermosillo" and the selected one.
  * The crowd shows the latest analyzed news (GET /pulso/multitud). Until there are some
  * (or if the API fails) it shows the fictional examples, labeled as such.
  */
@@ -43,11 +42,13 @@ function aMultitud(n) {
   }
 }
 
+const POR_PAGINA = 40
+
 export function usePulso() {
   const noticias = ref(noticiasDemo)
   const esDemo = ref(true)
 
-  getMultitud()
+  getMultitud(undefined, POR_PAGINA)
     .then(({ noticias: reales }) => {
       if (!reales?.length) return
       noticias.value = reales.map(aMultitud)
@@ -55,19 +56,30 @@ export function usePulso() {
     })
     .catch(() => {}) // keep the examples
 
-  const filtro = reactive({ emocion: '', fuente: '', categoria: '' })
   const seleccionId = ref(null)
-
-  const categorias = computed(() => [...new Set(noticias.value.map((n) => n.categoria))].sort())
-  const visibles = computed(() => noticias.value.filter((n) => pasaFiltro(n, filtro)))
   const seleccion = computed(() => noticias.value.find((n) => n.id === seleccionId.value) ?? null)
-  const hayFiltro = computed(() => !!(filtro.emocion || filtro.fuente || filtro.categoria))
 
-  function limpiarFiltro() {
-    filtro.emocion = ''
-    filtro.fuente = ''
-    filtro.categoria = ''
+  /** No older news left to load (or they're the examples) */
+  const agotadas = ref(false)
+  const cargando = ref(false)
+
+  /** Appends the next older page of news; resolves to how many came */
+  async function cargarMas() {
+    if (esDemo.value || agotadas.value || cargando.value) return 0
+    cargando.value = true
+    try {
+      const { noticias: mas } = await getMultitud(undefined, POR_PAGINA, noticias.value.length)
+      const ya = new Set(noticias.value.map((n) => n.id))
+      const nuevas = (mas ?? []).filter((n) => !ya.has(n.id)).map(aMultitud)
+      if (nuevas.length) noticias.value = [...noticias.value, ...nuevas]
+      if ((mas?.length ?? 0) < POR_PAGINA) agotadas.value = true
+      return nuevas.length
+    } catch {
+      return 0
+    } finally {
+      cargando.value = false
+    }
   }
 
-  return { noticias, esDemo, filtro, seleccionId, categorias, visibles, seleccion, hayFiltro, limpiarFiltro }
+  return { noticias, esDemo, seleccionId, seleccion, agotadas, cargando, cargarMas }
 }

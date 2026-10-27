@@ -13,6 +13,9 @@ export const getResumen = (signal) => api('/pulso/resumen', { signal })
 /** { total, pagina, porPagina, notas } with filters: tema, subtema, emocion, fuente, ambito, tipo, actor, q, desde, hasta, pagina */
 export const getNotas = (filtros, signal) => api(`/pulso/notas${qs(filtros)}`, { signal })
 
+/** { nota } one analyzed note with its event, in the same shape as getNotas' notes */
+export const getNota = (id, signal) => api(`/pulso/notas/${encodeURIComponent(id)}`, { signal })
+
 /** { medios: [{ fuente, nombre, notas, temas, emociones, tonos, polaridad, postura }] } */
 export const getMedios = (signal) => api('/pulso/medios', { signal })
 
@@ -28,8 +31,8 @@ export const getMapa = (filtros, signal) => api(`/pulso/mapa${qs(filtros)}`, { s
 /** { colonias: [{ colonia, notas, emociones, polaridad, punto }] } */
 export const getMapaColonias = (filtros, signal) => api(`/pulso/mapa/colonias${qs(filtros)}`, { signal })
 
-/** { noticias } latest notes in the crowd visualization's shape */
-export const getMultitud = (signal, limite = 40) => api(`/pulso/multitud${qs({ limite })}`, { signal })
+/** { noticias } latest notes in the crowd visualization's shape; `saltar` skips the newest ones (older pages) */
+export const getMultitud = (signal, limite = 40, saltar = 0) => api(`/pulso/multitud${qs({ limite, saltar })}`, { signal })
 
 /* ---------- ADMIN: analysis jobs (the LLM costs money, so it only runs when asked) ---------- */
 
