@@ -79,7 +79,7 @@ const ayuda = computed(() => {
       <!-- The tour: the focused news' title on top (out of the crowd's way), its emotions on the side, the buttons below -->
       <template v-if="enRecorrido">
         <Transition name="foco">
-          <div v-if="foco.noticia" :key="foco.noticia.id" class="foco">
+          <div v-if="foco.noticia" :key="foco.noticia.id" class="foco" :class="{ 'foco--demo': esDemo }">
             <span class="foco__fuente">
               <span aria-hidden="true">{{ iconoFuente(foco.noticia.fuente?.tipo) }}</span> {{ foco.noticia.fuente?.nombre }}
             </span>
@@ -205,7 +205,7 @@ const ayuda = computed(() => {
 .foco {
   position: absolute;
   z-index: 2;
-  top: 40px; /* below the demo label */
+  top: 12px;
   left: 50%;
   transform: translateX(-50%);
   width: min(520px, calc(100% - 24px));
@@ -245,6 +245,11 @@ const ayuda = computed(() => {
   border-color: #1c1c1c;
   color: #fff;
   white-space: nowrap;
+}
+
+/* Below the "Noticias de ejemplo" label */
+.foco--demo {
+  top: 40px;
 }
 
 .foco-enter-active,

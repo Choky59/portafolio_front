@@ -16,8 +16,6 @@ import {
 const props = defineProps({
   nota: { type: Object, required: true },
   nombreFuente: { type: String, default: '' },
-  /** The full analysis starts expanded (the news modal of the crowd) */
-  abierto: { type: Boolean, default: false },
   /** "Por qué esas emociones" right under the emotions bar instead of inside the full analysis (the crowd's modal) */
   emocionesPrimero: { type: Boolean, default: false },
 })
@@ -126,8 +124,14 @@ const enlaceCita = (c) => (esVideo.value && c.segundo !== null ? n.value.enlace.
       </ul>
     </div>
 
-    <details class="nota__detalle" :open="abierto">
-      <summary>Ver el análisis completo</summary>
+    <details class="nota__detalle">
+      <summary>
+        <span class="nota__abrir">
+          <strong>Ver el análisis completo</strong>
+          <span class="muted">Resumen, datos del hecho, quiénes aparecen, cifras y lo que se dijo</span>
+        </span>
+        <span class="nota__flecha" aria-hidden="true">▾</span>
+      </summary>
 
       <p>{{ n.resumen }}</p>
       <ul v-if="n.puntosClave.length" class="nota__puntos">
@@ -293,10 +297,68 @@ const enlaceCita = (c) => (esVideo.value && c.segundo !== null ? n.value.enlace.
   gap: 8px;
 }
 
+/* The full analysis: a clear bar that says there's more inside */
 .nota__detalle summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
   cursor: pointer;
-  font-weight: 700;
+  list-style: none;
+  transition: background 0.15s ease;
+}
+
+.nota__detalle summary::-webkit-details-marker {
+  display: none;
+}
+
+.nota__detalle summary:hover {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.nota__detalle[open] summary {
+  margin-bottom: 12px;
+}
+
+.nota__abrir {
+  display: grid;
+  gap: 2px;
+}
+
+.nota__abrir strong {
   color: var(--accent-ink);
+}
+
+.nota__abrir .muted {
+  font-size: 0.85rem;
+}
+
+.nota__flecha {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #1c1c1c;
+  font-weight: 800;
+  transition: transform 0.2s ease;
+}
+
+.nota__detalle[open] .nota__flecha {
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nota__detalle summary,
+  .nota__flecha {
+    transition: none;
+  }
 }
 
 .nota__detalle h4 {

@@ -84,7 +84,7 @@ const fecha = computed(() =>
       <div class="modal__cuerpo">
         <EstadoCarga v-if="cargando" texto="Cargando el análisis…" />
         <EstadoError v-else-if="error" :error="error" titulo="No se pudo cargar el análisis" @reintentar="cargar" />
-        <NotaTarjeta v-else-if="nota" :nota="nota" :nombre-fuente="noticia.fuente?.nombre ?? ''" abierto emociones-primero @filtrar="filtrar" />
+        <NotaTarjeta v-else-if="nota" :nota="nota" :nombre-fuente="noticia.fuente?.nombre ?? ''" emociones-primero @filtrar="filtrar" />
 
         <!-- Fictional example: only what the crowd has -->
         <article v-else class="demo card">
