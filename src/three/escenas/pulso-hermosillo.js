@@ -88,7 +88,9 @@ export default function crearPulsoHermosillo() {
   let firmaFoco = ''
   let arranco = false // the crowd has moved (until then a new grid area moves everyone at once)
   const quitar = []
-  const random = rng(11)
+  // A new seed on every visit: the news come in a different order, at different spots, with other groups
+  const semilla = Math.floor(Math.random() * 2 ** 31)
+  const random = rng(semilla)
 
   function firma(lista) {
     return (lista ?? []).map((n) => n.id).join('|')
@@ -298,7 +300,7 @@ export default function crearPulsoHermosillo() {
       scene.add(noticias.grupo)
 
       sim = crearSimulacion(movil ? PERSONAS.movil : PERSONAS.web, {
-        seed: 7,
+        seed: semilla + 1,
         limite: noticias.limite,
         estancia: [8, 16],
         cambiar: 0.35,
