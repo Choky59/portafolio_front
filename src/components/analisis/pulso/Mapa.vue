@@ -9,8 +9,13 @@
  * - Por colonia: one circle per colony, sized by its number of notes and colored by its
  *   dominant emotion (or by polarity, negative to positive).
  * Topic and emotion filters apply to both. Google Maps only loads with this view.
+ *
+ * On phones the map takes the whole screen (moved to <body>, the page behind doesn't scroll):
+ * no filters, one finger moves it and two zoom, the explanation opens in a modal on
+ * entering, and a back button returns to where the person was.
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { MarkerClusterer } from '@googlemaps/markerclusterer'
 import EstadoError from '../../EstadoError.vue'
 import { useApi } from '../../../composables/useApi'
@@ -35,6 +40,30 @@ watch(params, () => {
 
 const features = computed(() => puntos.value?.features ?? [])
 const notasEnMapa = computed(() => new Set(features.value.map((f) => f.properties.notaId)).size)
+
+const EXPLICACION =
+  'Cada punto es un lugar donde ocurrió una noticia, del color de la emoción que provoca; el número dice cuántas noticias hay en ese lugar. Los puntos cercanos se juntan en una burbuja hasta que te acercas. Los puntos tenues son aproximados (solo se sabe la colonia). En notas sobre delitos contra personas, la ubicación se difumina a propósito.'
+
+/* ---------- phones: full screen map ---------- */
+
+const router = useRouter()
+const consulta = window.matchMedia('(max-width: 720px)')
+const movil = ref(consulta.matches)
+const alCambiarPantalla = (e) => (movil.value = e.matches)
+const ayuda = ref(null)
+
+/** Back to where the person was (or to the analysis' first view when the map was opened directly) */
+function regresar() {
+  if (window.history.state?.back) router.back()
+  else emit('ir', 'panorama')
+}
+
+// The page behind the full screen map doesn't scroll
+watch(movil, (si) => (document.documentElement.style.overflow = si ? 'hidden' : ''), { immediate: true })
+watch(movil, (si) => {
+  if (si) capa.value = 'noticias' // the layer switch is hidden on phones
+  mapa?.setOptions({ gestureHandling: si ? 'greedy' : 'cooperative', fullscreenControl: !si })
+})
 
 /* ---------- Google Maps ---------- */
 
@@ -293,7 +322,9 @@ function dibujar() {
 // A rejected key leaves Google's map broken: stop drawing on it and say why
 let dejarDeEscuchar = null
 onMounted(async () => {
+  consulta.addEventListener('change', alCambiarPantalla)
   await nextTick()
+  if (movil.value) ayuda.value?.showModal()
   dejarDeEscuchar = siFallaLaLlave(() => {
     errorMapa.value = new Error(ERROR_LLAVE)
     agrupador = null
@@ -313,8 +344,10 @@ onMounted(async () => {
     mapId: GOOGLE_MAPS_MAP_ID,
     // Dark variant: the Map ID's "Modo oscuro" style (Google Cloud > Map management)
     colorScheme: gm.ColorScheme?.DARK ?? 'DARK',
-    // One finger / Ctrl + wheel to move it, so the page keeps scrolling
-    gestureHandling: 'cooperative',
+    // Desktop: Ctrl + wheel to zoom, so the page keeps scrolling. Phones (full screen, nothing
+    // to scroll): one finger moves it, pinch zooms
+    gestureHandling: movil.value ? 'greedy' : 'cooperative',
+    fullscreenControl: !movil.value,
     streetViewControl: false,
     mapTypeControl: false,
     clickableIcons: false,
@@ -324,6 +357,8 @@ onMounted(async () => {
   dibujar()
 })
 onBeforeUnmount(() => {
+  consulta.removeEventListener('change', alCambiarPantalla)
+  document.documentElement.style.overflow = ''
   dejarDeEscuchar?.()
   if (!errorMapa.value) limpiar()
 })
@@ -332,14 +367,12 @@ watch([features, () => colonias.value, capa, colorear], dibujar)
 
 <template>
   <div class="mapa-vista">
-    <h2 class="bloque__titulo">¿Dónde pasa?</h2>
-    <p class="muted intro">
-      Cada punto es un lugar donde ocurrió una noticia, del color de la emoción que provoca; el número dice cuántas
-      noticias hay en ese lugar. Los puntos cercanos se juntan en una burbuja hasta que te acercas. Los puntos tenues son
-      aproximados (solo se sabe la colonia). En notas sobre delitos contra personas, la ubicación se difumina a propósito.
-    </p>
+    <template v-if="!movil">
+      <h2 class="bloque__titulo">¿Dónde pasa?</h2>
+      <p class="muted intro">{{ EXPLICACION }}</p>
+    </template>
 
-    <div class="controles">
+    <div v-if="!movil" class="controles">
       <div class="capas" role="group" aria-label="Capa del mapa">
         <button type="button" class="chip chip--boton" :aria-pressed="capa === 'noticias'" @click="capa = 'noticias'">Noticias</button>
         <button type="button" class="chip chip--boton" :aria-pressed="capa === 'colonias'" @click="capa = 'colonias'">Por colonia</button>
@@ -368,9 +401,35 @@ watch([features, () => colonias.value, capa, colorear], dibujar)
     </div>
 
     <EstadoError v-if="error" :error="error" titulo="No se pudo cargar el mapa" @reintentar="reload" />
-    <p v-if="errorMapa" class="aviso-mapa">{{ errorMapa.message }}</p>
-    <div ref="contenedor" class="mapa" role="region" aria-label="Mapa de noticias de Hermosillo" />
-    <p class="muted nota-mapa" aria-live="polite">
+    <p v-if="errorMapa && !movil" class="aviso-mapa">{{ errorMapa.message }}</p>
+
+    <!-- Phones: the map (with its back button and legend) moves to <body> and fills the screen -->
+    <Teleport to="body" :disabled="!movil">
+      <div class="marco" :class="{ 'marco--movil': movil }">
+        <div ref="contenedor" class="mapa" role="region" aria-label="Mapa de noticias de Hermosillo" />
+        <template v-if="movil">
+          <button type="button" class="flotante regresar" @click="regresar">‹ Regresar</button>
+          <button type="button" class="flotante info" aria-label="Qué muestra el mapa" @click="ayuda?.showModal()">
+            ?
+          </button>
+          <p v-if="errorMapa" class="flotante aviso-flotante">{{ errorMapa.message }}</p>
+          <p v-else-if="loading" class="flotante aviso-flotante">Cargando…</p>
+          <ul class="flotante leyenda-flotante" aria-label="Colores">
+            <li v-for="e in EMOCIONES" :key="e.clave">
+              <span class="punto" :style="{ background: colorEmocion(e.clave) }" aria-hidden="true" /> {{ e.etiqueta }}
+            </li>
+          </ul>
+        </template>
+      </div>
+    </Teleport>
+
+    <dialog v-if="movil" ref="ayuda" class="ayuda" aria-labelledby="mapa-ayuda-titulo" @click.self="ayuda.close()">
+      <h2 id="mapa-ayuda-titulo">¿Dónde pasa?</h2>
+      <p>{{ EXPLICACION }}</p>
+      <button type="button" class="btn" @click="ayuda.close()">Ver el mapa</button>
+    </dialog>
+
+    <p v-if="!movil" class="muted nota-mapa" aria-live="polite">
       <template v-if="loading">Cargando…</template>
       <template v-else-if="capa === 'noticias'">
         {{ features.length }} {{ features.length === 1 ? 'lugar' : 'lugares' }} de {{ notasEnMapa }} {{ notasEnMapa === 1 ? 'noticia' : 'noticias' }}.
@@ -380,7 +439,7 @@ watch([features, () => colonias.value, capa, colorear], dibujar)
       <button v-if="filtros.tema || filtros.emocion" type="button" class="enlace" @click="emit('ir', 'noticias', params)">Ver esas noticias en lista →</button>
     </p>
 
-    <ul class="leyenda" aria-label="Colores">
+    <ul v-if="!movil" class="leyenda" aria-label="Colores">
       <li v-for="e in EMOCIONES" :key="e.clave"><span class="punto" :style="{ background: colorEmocion(e.clave) }" aria-hidden="true" /> {{ e.etiqueta }}</li>
     </ul>
   </div>
@@ -494,6 +553,109 @@ watch([features, () => colonias.value, capa, colorear], dibujar)
   border: 1px solid var(--border);
   background: var(--surface);
   font-size: 0.9rem;
+}
+
+/* ---------- phones: the map fills the screen ---------- */
+.marco--movil {
+  position: fixed;
+  inset: 0;
+  z-index: 60; /* over the site's top bar */
+  background: #1c1c1c;
+}
+
+.marco--movil .mapa {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+}
+
+.flotante {
+  position: absolute;
+  z-index: 1;
+  margin: 0;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(28 28 28 / 0.88);
+  color: #fffdf7;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+  font: 700 0.95rem var(--font-body);
+}
+
+.regresar,
+.info {
+  top: calc(12px + env(safe-area-inset-top));
+  min-height: 44px;
+  cursor: pointer;
+}
+
+.regresar {
+  left: 12px;
+  padding: 0 16px;
+}
+
+.info {
+  right: 12px;
+  width: 44px;
+  font-size: 1.1rem;
+}
+
+.aviso-flotante {
+  top: calc(66px + env(safe-area-inset-top));
+  left: 12px;
+  right: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.leyenda-flotante {
+  left: 50%;
+  bottom: calc(14px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: calc(100% - 24px);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px 10px;
+  padding: 6px 12px;
+  border-radius: 14px;
+  list-style: none;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.leyenda-flotante .punto {
+  border-color: #fffdf7;
+}
+
+.ayuda {
+  max-width: min(420px, calc(100% - 32px));
+  padding: 22px;
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.ayuda::backdrop {
+  background: rgb(0 0 0 / 0.55);
+}
+
+.ayuda h2 {
+  margin: 0 0 8px;
+  font-size: 1.5rem;
+}
+
+.ayuda p {
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+
+.ayuda .btn {
+  width: 100%;
 }
 
 /* Points, bubbles and info windows are created by Google Maps inside the map (outside the component's scope).
