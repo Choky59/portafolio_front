@@ -7,7 +7,9 @@ function whatsappLink(texto) {
 }
 
 export const config = {
-  nombre: 'Jorge García',
+  nombre: 'Jorge Andrés García Montiel',
+  // Short form for tight spots (the top bar on phones)
+  nombreCorto: 'Jorge García',
   serie: 'Construyendo proyectos y abierto a nuevas oportunidades',
   presentacion:
     'Ingeniero en Mecatrónica en Hermosillo. Construyo hardware y software que resuelve problemas reales, y lo explico claro.',

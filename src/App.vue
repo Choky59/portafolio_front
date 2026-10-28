@@ -12,7 +12,10 @@ const anio = new Date().getFullYear()
 
   <nav class="barra" aria-label="Principal">
     <div class="barra__interior container">
-      <RouterLink to="/" class="barra__marca">{{ config.nombre }}</RouterLink>
+      <RouterLink to="/" class="barra__marca" :aria-label="`${config.nombre}, inicio`">
+        <span class="barra__nombre">{{ config.nombre }}</span>
+        <span class="barra__nombre--corto" aria-hidden="true">{{ config.nombreCorto }}</span>
+      </RouterLink>
       <div class="barra__acciones">
         <RouterLink to="/#proyectos" class="barra__link">Proyectos</RouterLink>
         <RouterLink to="/sobre-mi" class="barra__link">Sobre mí</RouterLink>
@@ -74,6 +77,21 @@ const anio = new Date().getFullYear()
   font-size: 1.6rem;
   color: var(--text);
   text-decoration: none;
+}
+
+/* The full name, or the short one where it doesn't fit next to the links */
+.barra__nombre--corto {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .barra__nombre {
+    display: none;
+  }
+
+  .barra__nombre--corto {
+    display: inline;
+  }
 }
 
 .barra__acciones {

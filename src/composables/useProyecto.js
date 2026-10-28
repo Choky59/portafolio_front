@@ -14,7 +14,7 @@ export function useProyecto() {
 }
 
 /**
- * <title> and meta description of a project tab, e.g. "Videos · ¿Se puede salir? · Jorge García".
+ * <title> and meta description of a project tab, e.g. "Videos · ¿Se puede salir? · Jorge Andrés García Montiel".
  * `seccion` is null for the Resumen tab. `fn` may return overrides (a single video page).
  */
 export function useHeadSeccion(seccion, fn = () => ({})) {
@@ -25,7 +25,7 @@ export function useHeadSeccion(seccion, fn = () => ({})) {
     const extra = fn(p) ?? {}
     const nombre = extra.nombre ?? seccion
     setHead({
-      title: nombre ? `${nombre} · ${p.titulo} · Jorge García` : `#${p.numero} ${p.titulo} · Jorge García`,
+      title: nombre ? `${nombre} · ${p.titulo} · Jorge Andrés García Montiel` : `#${p.numero} ${p.titulo} · Jorge Andrés García Montiel`,
       description: extra.descripcion ?? p.resumen,
     })
   })

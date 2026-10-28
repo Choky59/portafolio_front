@@ -1,6 +1,6 @@
 # portafolio_front
 
-Sitio del portafolio de Jorge García: Vue 3 + Vite + Vue Router + Three.js, en JavaScript. Consume la API de [`portafolio_back`](../portafolio_back).
+Sitio del portafolio de Jorge Andrés García Montiel: Vue 3 + Vite + Vue Router + Three.js, en JavaScript. Consume la API de [`portafolio_back`](../portafolio_back).
 
 ## Desarrollo
 

@@ -3,7 +3,7 @@ import { onMounted } from 'vue'
 import { setHead } from '../composables/useHead'
 
 onMounted(() => {
-  setHead({ title: 'No encontrado · Jorge García', noindex: true })
+  setHead({ title: 'No encontrado · Jorge Andrés García Montiel', noindex: true })
 })
 </script>
 

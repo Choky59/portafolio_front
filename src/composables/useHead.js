@@ -1,4 +1,4 @@
-const DEFAULT_TITLE = 'Jorge García · Proyectos de hardware y software'
+const DEFAULT_TITLE = 'Jorge Andrés García Montiel · Proyectos de hardware y software'
 const DEFAULT_DESCRIPTION =
   'Ingeniero en Mecatrónica en Hermosillo. Construyendo proyectos de hardware y software y abierto a nuevas oportunidades.'
 

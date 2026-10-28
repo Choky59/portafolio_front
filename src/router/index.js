@@ -9,7 +9,7 @@ const routes = [
     name: 'inicio',
     component: InicioView,
     meta: {
-      title: 'Jorge García · Proyectos de hardware y software',
+      title: 'Jorge Andrés García Montiel · Proyectos de hardware y software',
       description:
         'Ingeniero en Mecatrónica en Hermosillo. Construyendo proyectos de hardware y software y abierto a nuevas oportunidades.',
     },
@@ -84,7 +84,7 @@ const routes = [
     name: 'sobre-mi',
     component: () => import('../views/SobreMiView.vue'),
     meta: {
-      title: 'Sobre mí · Jorge García',
+      title: 'Sobre mí · Jorge Andrés García Montiel',
       description:
         'Jorge Andrés García Montiel: ingeniero en Mecatrónica (Tec de Monterrey) con 8 años en Innovación y Desarrollo. Electrónica, firmware y software.',
     },
