@@ -27,7 +27,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Pitic' },
     sentimiento: {
-      emociones: { alegria: 0.62, enojo: 0.05, tristeza: 0, miedo: 0, sorpresa: 0.13, neutral: 0.2 },
+      emociones: { alegria: 0.62, enojo: 0.05, tristeza: 0, miedo: 0, sorpresa: 0.13 },
       polaridad: 0.7,
       intensidad: 0.6,
     },
@@ -48,7 +48,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Toda la ciudad' },
     sentimiento: {
-      emociones: { alegria: 0, enojo: 0.15, tristeza: 0.1, miedo: 0.45, sorpresa: 0.05, neutral: 0.25 },
+      emociones: { alegria: 0, enojo: 0.15, tristeza: 0.1, miedo: 0.45, sorpresa: 0.05 },
       polaridad: -0.5,
       intensidad: 0.7,
     },
@@ -70,7 +70,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Country Club' },
     sentimiento: {
-      emociones: { alegria: 0, enojo: 0.6, tristeza: 0.05, miedo: 0, sorpresa: 0.1, neutral: 0.25 },
+      emociones: { alegria: 0, enojo: 0.6, tristeza: 0.05, miedo: 0, sorpresa: 0.1 },
       polaridad: -0.6,
       intensidad: 0.65,
     },
@@ -91,7 +91,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Villa de Seris' },
     sentimiento: {
-      emociones: { alegria: 0.7, enojo: 0, tristeza: 0, miedo: 0, sorpresa: 0.2, neutral: 0.1 },
+      emociones: { alegria: 0.7, enojo: 0, tristeza: 0, miedo: 0, sorpresa: 0.2 },
       polaridad: 0.85,
       intensidad: 0.8,
     },
@@ -112,7 +112,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'San Benito' },
     sentimiento: {
-      emociones: { alegria: 0, enojo: 0.55, tristeza: 0.2, miedo: 0.1, sorpresa: 0.05, neutral: 0.1 },
+      emociones: { alegria: 0, enojo: 0.55, tristeza: 0.2, miedo: 0.1, sorpresa: 0.05 },
       polaridad: -0.75,
       intensidad: 0.75,
     },
@@ -133,7 +133,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Centro' },
     sentimiento: {
-      emociones: { alegria: 0.5, enojo: 0, tristeza: 0, miedo: 0, sorpresa: 0.35, neutral: 0.15 },
+      emociones: { alegria: 0.5, enojo: 0, tristeza: 0, miedo: 0, sorpresa: 0.35 },
       polaridad: 0.8,
       intensidad: 0.7,
     },
@@ -155,7 +155,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Olivares' },
     sentimiento: {
-      emociones: { alegria: 0, enojo: 0.25, tristeza: 0.3, miedo: 0.25, sorpresa: 0.05, neutral: 0.15 },
+      emociones: { alegria: 0, enojo: 0.25, tristeza: 0.3, miedo: 0.25, sorpresa: 0.05 },
       polaridad: -0.55,
       intensidad: 0.6,
     },
@@ -176,7 +176,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Toda la ciudad' },
     sentimiento: {
-      emociones: { alegria: 0.45, enojo: 0.1, tristeza: 0, miedo: 0, sorpresa: 0.2, neutral: 0.25 },
+      emociones: { alegria: 0.45, enojo: 0.1, tristeza: 0, miedo: 0, sorpresa: 0.2 },
       polaridad: 0.5,
       intensidad: 0.5,
     },
@@ -197,7 +197,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Centro' },
     sentimiento: {
-      emociones: { alegria: 0.1, enojo: 0.1, tristeza: 0, miedo: 0.05, sorpresa: 0.05, neutral: 0.7 },
+      emociones: { alegria: 0.1, enojo: 0.1, tristeza: 0, miedo: 0.05, sorpresa: 0.05 },
       polaridad: 0.05,
       intensidad: 0.3,
     },
@@ -218,7 +218,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Centro' },
     sentimiento: {
-      emociones: { alegria: 0.5, enojo: 0.05, tristeza: 0, miedo: 0, sorpresa: 0.3, neutral: 0.15 },
+      emociones: { alegria: 0.5, enojo: 0.05, tristeza: 0, miedo: 0, sorpresa: 0.3 },
       polaridad: 0.7,
       intensidad: 0.55,
     },
@@ -239,7 +239,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Solidaridad' },
     sentimiento: {
-      emociones: { alegria: 0, enojo: 0.5, tristeza: 0.2, miedo: 0.15, sorpresa: 0.05, neutral: 0.1 },
+      emociones: { alegria: 0, enojo: 0.5, tristeza: 0.2, miedo: 0.15, sorpresa: 0.05 },
       polaridad: -0.65,
       intensidad: 0.7,
     },
@@ -260,7 +260,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Centro Norte' },
     sentimiento: {
-      emociones: { alegria: 0.45, enojo: 0, tristeza: 0, miedo: 0, sorpresa: 0.15, neutral: 0.4 },
+      emociones: { alegria: 0.45, enojo: 0, tristeza: 0, miedo: 0, sorpresa: 0.15 },
       polaridad: 0.6,
       intensidad: 0.4,
     },
@@ -281,7 +281,7 @@ export const noticiasDemo = [
     ],
     ubicacion: { colonia: 'Norte' },
     sentimiento: {
-      emociones: { alegria: 0, enojo: 0.15, tristeza: 0.3, miedo: 0.4, sorpresa: 0.1, neutral: 0.05 },
+      emociones: { alegria: 0, enojo: 0.15, tristeza: 0.3, miedo: 0.4, sorpresa: 0.1 },
       polaridad: -0.7,
       intensidad: 0.75,
     },
@@ -299,7 +299,7 @@ export const noticiasDemo = [
     entidades: [{ tipo: 'lugar', nombre: 'Hermosillo', rol: 'ubicación' }],
     ubicacion: { colonia: 'Toda la ciudad' },
     sentimiento: {
-      emociones: { alegria: 0.55, enojo: 0.1, tristeza: 0, miedo: 0.05, sorpresa: 0.2, neutral: 0.1 },
+      emociones: { alegria: 0.55, enojo: 0.1, tristeza: 0, miedo: 0.05, sorpresa: 0.2 },
       polaridad: 0.6,
       intensidad: 0.6,
     },

@@ -4,8 +4,8 @@
  */
 import { EMOCIONES as TODAS } from '../../../three/pulso/emociones'
 
-/** The analysis has five emotions (no neutral: the crowd uses it for "no reaction") */
-export const EMOCIONES = TODAS.filter((e) => e.clave !== 'neutral')
+/** The analysis' five emotions (there's no neutral) */
+export const EMOCIONES = TODAS
 export const colorEmocion = (clave) => `var(--emo-${clave})`
 export const nombreEmocion = (clave) => TODAS.find((e) => e.clave === clave)?.etiqueta ?? clave
 

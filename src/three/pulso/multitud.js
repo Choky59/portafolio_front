@@ -24,6 +24,8 @@ const CADERA_Y = 0.36
 const CUERPO_Y = 0.62
 const CABEZA_Y = 1.02
 const SEPARACION_PIERNAS = 0.09
+/** Everyone stands this high, so the feet's outline isn't cut by the ground */
+const ELEVACION = 0.06
 // Eyes on the face, in head space (the head is a 0.19 sphere facing +z)
 const OJO_X = 0.068
 const OJO_Y = 0.03
@@ -40,7 +42,7 @@ function gradienteToon(THREE) {
   return textura
 }
 
-/** Body settings per emotion index (CLAVES_EMOCION order); people with no emotion use neutral's */
+/** Body settings per emotion index (CLAVES_EMOCION order); people with no emotion yet (walking) use the plain body */
 const CUERPOS = CLAVES_EMOCION.map((c) => ANIMACIONES[c]?.cuerpo ?? {})
 const CUERPO_NEUTRAL = ANIMACIONES.neutral?.cuerpo ?? {}
 
@@ -64,9 +66,13 @@ export function crearMultitud(THREE, sim, paleta) {
   peloGeo.rotateX(-0.35) // hairline a bit toward the back
   const ojoGeo = new THREE.SphereGeometry(0.03, 8, 6)
 
+  /** The outline: the part a bit bigger, around its own center (a leg's pivot is at the hip, not its middle) */
   function contornoDe(geo, radio) {
     const k = (radio + CONTORNO) / radio
-    return geo.clone().scale(k, k, k)
+    const copia = geo.clone()
+    copia.computeBoundingBox()
+    const centro = copia.boundingBox.getCenter(new THREE.Vector3())
+    return copia.translate(-centro.x, -centro.y, -centro.z).scale(k, k, k).translate(centro.x, centro.y, centro.z)
   }
 
   function parte(geo, radio, conColor = true) {
@@ -218,7 +224,7 @@ export function crearMultitud(THREE, sim, paleta) {
       calcularPose(e >= 0 ? CUERPOS[e] : CUERPO_NEUTRAL, i, t, a, reducido)
       const px = x + ladoX * pose.lado + adelanteX * pose.adelante
       const pz = z + ladoZ * pose.lado + adelanteZ * pose.adelante
-      const base = pose.arriba
+      const base = pose.arriba + ELEVACION
       const sx = s * pose.sx
       const sy = s * pose.sy
 
@@ -250,7 +256,7 @@ export function crearMultitud(THREE, sim, paleta) {
       }
 
       // Hatched contact shadow, stretched away from the light (down-right); smaller in the air
-      const enAire = 1 - Math.min(0.4, base)
+      const enAire = 1 - Math.min(0.4, pose.arriba)
       dummy.position.set(px + 0.28, 0.012, pz + 0.16)
       dummy.rotation.set(0, -0.5, 0)
       dummy.scale.set(1.15 * s * enAire, 1, 0.6 * s * enAire)
@@ -279,7 +285,7 @@ export function crearMultitud(THREE, sim, paleta) {
   return {
     grupo,
     actualizar,
-    alturaCabeza: CABEZA_Y,
+    alturaCabeza: CABEZA_Y + ELEVACION,
     cabezaX, cabezaY, cabezaZ, mira,
     /** Per-person phase (0–2π), for things that should differ from person to person */
     fase0,

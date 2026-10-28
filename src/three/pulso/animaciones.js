@@ -27,7 +27,7 @@
 export const ANIMACIONES = {
   enojo: {
     cuerpo: {
-      temblor: { amplitud: 0.06, velocidad: 42 },
+      // No shake: it drew too much attention
       pulso: { cada: 1.4, color: 0.3 },
     },
     particulas: [

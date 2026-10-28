@@ -9,13 +9,6 @@ import { nombreTema } from '../components/analisis/pulso/catalogo'
  * (or if the API fails) it shows the fictional examples, labeled as such.
  */
 
-function mezclaMultitud(n) {
-  const intensidad = Math.min(1, Math.max(0, n.intensidad ?? 0.5))
-  const mezcla = Object.fromEntries(Object.entries(n.emociones ?? {}).map(([e, v]) => [e, Math.round(v * intensidad * 1000) / 1000]))
-  mezcla.neutral = Math.round((1 - intensidad) * 1000) / 1000
-  return mezcla
-}
-
 /** A real analyzed note in the shape the crowd and its panel use (same as the examples) */
 function aMultitud(n) {
   return {
@@ -34,8 +27,8 @@ function aMultitud(n) {
       })),
       ...n.lugares.map((l) => ({ tipo: 'lugar', nombre: l, rol: 'lugar' })),
     ],
-    // A share `intensidad` of the people react with the note's mix; the rest don't react (neutral)
-    sentimiento: { emociones: mezclaMultitud(n), polaridad: n.polaridad, intensidad: n.intensidad },
+    // Everyone who gets to the news reacts with one emotion of the note's mix
+    sentimiento: { emociones: { ...n.emociones }, polaridad: n.polaridad, intensidad: n.intensidad },
     emocionDominante: n.emocionDominante,
     relevancia: n.relevancia,
     enlace: n.enlace,

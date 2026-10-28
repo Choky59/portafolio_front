@@ -18,6 +18,8 @@ const props = defineProps({
   nombreFuente: { type: String, default: '' },
   /** The full analysis starts expanded (the news modal of the crowd) */
   abierto: { type: Boolean, default: false },
+  /** "Por qué esas emociones" right under the emotions bar instead of inside the full analysis (the crowd's modal) */
+  emocionesPrimero: { type: Boolean, default: false },
 })
 const emit = defineEmits(['filtrar'])
 
@@ -91,6 +93,16 @@ const enlaceCita = (c) => (esVideo.value && c.segundo !== null ? n.value.enlace.
     <BarraApilada :segmentos="emociones" :alto="10" />
     <p v-if="n.sentimiento.intensidad !== undefined" class="nota__meta muted">{{ intensidadEnPalabras(n.sentimiento.intensidad) }}</p>
 
+    <section v-if="emocionesPrimero && explicadas.length" class="nota__por-que">
+      <h4>Por qué esas emociones</h4>
+      <ul class="nota__emociones">
+        <li v-for="e in explicadas" :key="e.clave">
+          <span class="punto" :style="{ background: e.color }" aria-hidden="true" />
+          <strong>{{ e.etiqueta }} {{ Math.round(e.valor * 100) }}%</strong> · {{ e.explicacion }}
+        </li>
+      </ul>
+    </section>
+
     <div class="nota__acciones">
       <a v-if="n.enlace" :href="n.enlace" target="_blank" rel="noopener" class="btn btn--sm">
         {{ esVideo ? `▶ Ver en el minuto ${minuto(n.tiempo?.inicio ?? 0)}` : 'Leer la nota' }} ↗
@@ -122,7 +134,7 @@ const enlaceCita = (c) => (esVideo.value && c.segundo !== null ? n.value.enlace.
         <li v-for="p in n.puntosClave" :key="p">{{ p }}</li>
       </ul>
 
-      <template v-if="explicadas.length">
+      <template v-if="!emocionesPrimero && explicadas.length">
         <h4>Por qué esas emociones</h4>
         <ul class="nota__emociones">
           <li v-for="e in explicadas" :key="e.clave">
@@ -323,7 +335,8 @@ const enlaceCita = (c) => (esVideo.value && c.segundo !== null ? n.value.enlace.
   cursor: pointer;
 }
 
-.nota__cobertura h4 {
+.nota__cobertura h4,
+.nota__por-que h4 {
   margin: 0 0 4px;
   font-family: var(--font-body);
   font-size: 0.95rem;
@@ -355,6 +368,7 @@ const enlaceCita = (c) => (esVideo.value && c.segundo !== null ? n.value.enlace.
 
 .nota__emociones {
   list-style: none;
+  margin: 0;
   padding-left: 0 !important;
   display: grid;
   gap: 4px;

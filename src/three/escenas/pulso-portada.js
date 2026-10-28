@@ -16,14 +16,14 @@ const NOTICIAS = [
     titulo: 'Buena noticia',
     fuente: { tipo: 'radio' },
     relevancia: 0.25,
-    sentimiento: { emociones: { alegria: 0.7, sorpresa: 0.2, neutral: 0.1 } },
+    sentimiento: { emociones: { alegria: 0.7, sorpresa: 0.2 } },
   },
   {
     id: 'portada-mala',
     titulo: 'Mala noticia',
     fuente: { tipo: 'tv' },
     relevancia: 0.2,
-    sentimiento: { emociones: { enojo: 0.6, tristeza: 0.2, miedo: 0.1, neutral: 0.1 } },
+    sentimiento: { emociones: { enojo: 0.6, tristeza: 0.2, miedo: 0.1 } },
   },
 ]
 
@@ -57,7 +57,12 @@ export default function crearPortadaPulso() {
       )
       scene.add(piso)
 
-      noticias = crearNoticias(THREE, NOTICIAS.length, { separacion: 5.5, margen: 1.5 })
+      noticias = crearNoticias(THREE, NOTICIAS.length, {
+        separacion: 5.5,
+        margen: 1.5,
+        // Small circles: few people and three news close together
+        radio: (n) => 1.6 + (n.relevancia ?? 0.5) * 1.6,
+      })
       NOTICIAS.forEach((noticia, k) => noticias.poner(k, noticia))
       noticias.update(0, 1) // shown right away, without the pop-in
       contenido.add(noticias.grupo)

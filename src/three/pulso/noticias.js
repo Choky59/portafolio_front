@@ -14,13 +14,14 @@ import { GRAFITO, texturaCirculo } from './lapiz.js'
  * indexes valid while news come and go.
  */
 const SEPARACION = 7
-const RADIO_MAX = 3.2
-/** With `area`: news centers at least this far apart (their circles and crowds don't overlap) */
-const SEPARACION_MIN = RADIO_MAX * 2 + 1
-const INTENTOS = 40
+const RADIO_MAX = 3.9
+/** With `area`: news centers at least this far apart (their crowds well apart, with room to walk between them) */
+const SEPARACION_MIN = RADIO_MAX * 2 + 4.5
+const INTENTOS = 150
 
 export function radioDe(noticia) {
-  return 1.6 + (noticia.relevancia ?? 0.5) * 1.6
+  // Big enough for the crowd it draws: the more relevant, the more people go
+  return 2.3 + (noticia.relevancia ?? 0.5) * 1.6
 }
 
 /**
@@ -37,7 +38,7 @@ function posicion(k, cantidad, circulo, separacion) {
   return { x: Math.cos(angulo) * r, z: Math.sin(angulo) * r }
 }
 
-export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, circulo = 0, area = 0, random = Math.random, margen = 6 } = {}) {
+export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, circulo = 0, area = 0, random = Math.random, margen = 6, radio = radioDe } = {}) {
   const grupo = new THREE.Group()
 
   const blanco = new THREE.MeshToonMaterial({ color: 0xffffff })
@@ -135,7 +136,7 @@ export function crearNoticias(THREE, cantidad, { separacion = SEPARACION, circul
         p.circulo.material.map.dispose()
         p.circulo.material.dispose()
       }
-      p.radio = radioDe(noticia)
+      p.radio = radio(noticia)
       p.circulo = new THREE.Mesh(
         new THREE.PlaneGeometry(p.radio * 2, p.radio * 2).rotateX(-Math.PI / 2),
         new THREE.MeshBasicMaterial({

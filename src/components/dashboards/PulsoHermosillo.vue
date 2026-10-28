@@ -48,10 +48,10 @@ async function siguiente() {
   ordenar('siguiente')
 }
 
-/** The focused news' emotions, top to bottom, as shares of the people who react (no neutral) */
+/** The focused news' emotions, top to bottom, as shares of the people who react */
 const barra = computed(() => {
   const mezcla = foco.value.noticia?.sentimiento?.emociones ?? {}
-  const lista = EMOCIONES.filter((e) => e.clave !== 'neutral').map((e) => ({ ...e, valor: mezcla[e.clave] ?? 0 }))
+  const lista = EMOCIONES.map((e) => ({ ...e, valor: mezcla[e.clave] ?? 0 }))
   const suma = lista.reduce((a, e) => a + e.valor, 0)
   // Shares of 1: flex-grow values that add up to less than 1 would leave part of the bar empty (white, like "neutral")
   return suma > 0 ? lista.filter((e) => e.valor > 0).map((e) => ({ ...e, parte: e.valor / suma, pct: Math.round((e.valor / suma) * 100) })) : []

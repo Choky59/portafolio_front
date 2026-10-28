@@ -5,7 +5,7 @@ import { crearCiclo } from '../pulso/ciclo.js'
 import { crearCapa } from '../pulso/burbujas.js'
 import { crearParticulas } from '../pulso/particulas.js'
 import { ANIMACIONES } from '../pulso/animaciones.js'
-import { FRASES } from '../pulso/emociones.js'
+import { FRASES, FRASES_EMPUJON } from '../pulso/emociones.js'
 import { texturaPapel } from '../pulso/lapiz.js'
 import { rng } from '../piezas.js'
 
@@ -47,8 +47,8 @@ const ELEVACION = (55 * Math.PI) / 180
 /** Starting distance of the camera; farther if needed so the whole circle of news fits */
 const DISTANCIA_INICIAL = 62
 /** News on the map at once, and the radius of the area they show up in */
-const ACTIVAS = { web: 6, movil: 5 }
-const CIRCULO = { web: 11, movil: 9.5 }
+const ACTIVAS = { web: 10, movil: 9 } // many news: the crowd splits into small groups
+const CIRCULO = { web: 28, movil: 26 } // room for the news to stay well apart (noticias.js SEPARACION_MIN)
 /** Room kept around the circle when framing it: the news' own circles and their cards */
 const MARCO = 6
 /** Zoom into one news: room around its circle (its crowd and card), and the closest the camera gets */
@@ -58,6 +58,11 @@ const DISTANCIA_ZOOM_MIN = 16
 const SUAVIDAD = 1.8
 /** People on the map */
 const PERSONAS = { web: 180, movil: 110 }
+/**
+ * People at a news also talk now and then, not only on arriving: someone says something
+ * every [min, max] seconds (somewhere on the map; [0, 0] turns it off)
+ */
+const FRASE_AL_AZAR = [1.2, 3]
 /**
  * Room left between the grid and the edges of the view, in ground units: more at the
  * far edge (the figures stand up into it, and the badges sit there) than at the sides.
@@ -72,6 +77,8 @@ export default function crearPulsoHermosillo() {
   let firmaNoticias = ''
   let reducido = false
   let tiempoFrase = 0
+  let tiempoQueja = 0
+  let tiempoAlAzar = 0
   let radioCirculo = CIRCULO.web
   let distanciaAncha = DISTANCIA_INICIAL
   let mira = null // point the camera looks at
@@ -134,6 +141,25 @@ export default function crearPulsoHermosillo() {
   }
 
   /** The tour: eases the camera to the news whose turn it is (or the open one), or to the whole map */
+  /** Now and then someone already reacting at a visible news says one of its emotion's phrases */
+  function hablarAlAzar(dt) {
+    if (!FRASE_AL_AZAR[1]) return
+    tiempoAlAzar -= dt
+    if (tiempoAlAzar > 0) return
+    tiempoAlAzar = FRASE_AL_AZAR[0] + random() * (FRASE_AL_AZAR[1] - FRASE_AL_AZAR[0])
+    if (!capa.hayLugar()) return
+    const aqui = []
+    for (let i = 0; i < sim.n; i++) {
+      const k = sim.objetivo[i]
+      if (k >= 0 && noticias.puntos[k]?.visible && sim.emocion[i] >= 0 && sim.mezcla[i] > 0.8) aqui.push(i)
+    }
+    if (!aqui.length) return
+    const i = aqui[Math.floor(random() * aqui.length)]
+    const emocion = sim.claveEmocion(i)
+    const frases = FRASES[emocion] ?? []
+    if (frases.length) capa.decir(i, frases[Math.floor(random() * frases.length)], emocion)
+  }
+
   function focoActual(turno) {
     const abierta = noticias.puntos.find((p) => p.activa && params.seleccionId && p.noticia.id === params.seleccionId)
     const foco = abierta ?? noticias.puntos[turno]
@@ -216,8 +242,9 @@ export default function crearPulsoHermosillo() {
         mejor = i
       }
     }
-    if (mejor >= 0) {
-      const emocion = sim.claveEmocion(mejor) ?? 'neutral'
+    // Only someone already at a news says something (on the way they feel nothing yet)
+    const emocion = mejor >= 0 ? sim.claveEmocion(mejor) : null
+    if (emocion) {
       const frases = FRASES[emocion]
       capa.decir(mejor, frases[Math.floor(random() * frases.length)], emocion, true)
     }
@@ -371,10 +398,22 @@ export default function crearPulsoHermosillo() {
         tiempoFrase -= dt
         if (llegadas.length && tiempoFrase <= 0 && capa.hayLugar()) {
           const i = llegadas[Math.floor(random() * llegadas.length)]
-          const emocion = sim.claveEmocion(i) ?? 'neutral'
-          const frases = FRASES[emocion]
-          capa.decir(i, frases[Math.floor(random() * frases.length)], emocion)
+          const emocion = sim.claveEmocion(i)
+          const frases = FRASES[emocion] ?? []
+          if (frases.length) capa.decir(i, frases[Math.floor(random() * frases.length)], emocion)
           tiempoFrase = 0.35 + random() * 0.6
+        }
+
+        hablarAlAzar(dt)
+
+        // Someone cut through a news: one of the people who stepped aside complains (not too often)
+        tiempoQueja -= dt
+        if (sim.quejas.length && tiempoQueja <= 0) {
+          tiempoQueja = 1.2 + random() * 1.3
+          const i = sim.quejas[Math.floor(random() * sim.quejas.length)]
+          const emocion = sim.claveEmocion(i)
+          const frases = FRASES_EMPUJON[emocion] ?? []
+          if (frases.length) capa.decir(i, frases[Math.floor(random() * frases.length)], emocion, true)
         }
       }
 
