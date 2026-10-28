@@ -1,7 +1,7 @@
 <script setup>
 /**
- * Featured "Mira cómo lo construí" block of the Resumen tab: the project's video
- * series, where most of the teaching content lives.
+ * Featured "En video" block of the Resumen tab: the project's video series (what was
+ * found and how it was built), each video with its article.
  */
 defineProps({
   slugProyecto: { type: String, required: true },
@@ -13,10 +13,10 @@ const disponible = (v) => !!(v.src || v.youtubeId)
 
 <template>
   <section class="serie" aria-labelledby="serie-titulo">
-    <h2 id="serie-titulo" class="serie__titulo">Mira cómo lo construí</h2>
+    <h2 id="serie-titulo" class="serie__titulo">El proyecto en video</h2>
     <p class="serie__intro">
-      {{ videos.length }} {{ videos.length === 1 ? 'video corto' : 'videos cortos' }}, cada uno con su explicación técnica
-      paso a paso.
+      {{ videos.length }} {{ videos.length === 1 ? 'video corto' : 'videos cortos' }} sobre lo que se encontró y cómo se hizo,
+      cada uno con su artículo para leerlo con calma.
     </p>
 
     <ol class="serie__lista">
