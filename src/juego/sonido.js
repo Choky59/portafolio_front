@@ -123,6 +123,11 @@ export function crearSonido() {
       tono(160, { tipo: 'triangle', duracion: 0.25, volumen: 0.35, hasta: 60 })
       soplo({ duracion: 0.15, volumen: 0.25, desde: 1500, hasta: 300 })
     },
+    /** Tail whip: a heavy thud plus the tires screeching */
+    coletazo() {
+      tono(110, { tipo: 'triangle', duracion: 0.35, volumen: 0.45, hasta: 45 })
+      soplo({ duracion: 0.6, volumen: 0.3, desde: 2400, hasta: 900, tipo: 'bandpass' })
+    },
     /** Hee-haw: the Burro percherón announces itself */
     rebuzno() {
       for (let i = 0; i < 2; i++) {

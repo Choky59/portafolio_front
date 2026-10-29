@@ -29,7 +29,8 @@ watch(
 const reloj = setInterval(() => (ahora.value = performance.now()), 100)
 onBeforeUnmount(() => clearInterval(reloj))
 
-const restante = computed(() => Math.max(0, props.partida.restanteMs - (ahora.value - recibido.value)))
+// The 100 ms clock can lag behind the moment the phase arrived: never count negative time (a "4")
+const restante = computed(() => Math.max(0, props.partida.restanteMs - Math.max(0, ahora.value - recibido.value)))
 
 const aviso = computed(() => {
   const { fase, ganadorRonda } = props.partida

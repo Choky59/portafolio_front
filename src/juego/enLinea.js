@@ -1,5 +1,5 @@
 import { alturaEn, prepararPista } from './compartido/pista'
-import { PARAMETROS_FISICA, avanzarCarro, copiarCarro, rapidez } from './compartido/fisica'
+import { HITBOX, PARAMETROS_FISICA, avanzarCarro, colisionCarros, copiarCarro, rapidez } from './compartido/fisica'
 import { PARAMETROS_CAMARA, PARAMETROS_CAMARA_PARTIDA, crearCamara, enVista, seguir } from './compartido/camara'
 import { EVENTOS, FASES, FASES_CON_MANEJO, desempacarCarro } from './compartido/protocolo'
 import { crearEntrada, crearTeclado } from './entrada/teclado.js'
@@ -21,9 +21,11 @@ import ITEMS from './datos/items.json'
  *   En las fases sin manejo (cuenta regresiva, pausa) o con el carro eliminado no se predice:
  *   el servidor tampoco mueve el carro.
  *
- * - Los demás carros: INTERPOLACIÓN POR CARRO. El `seq` de cada carro es su propio reloj (un
- *   control por tick de su dueño). Por carro se estima el desfase entre su `seq` y el reloj
- *   local y se dibuja RETRASO_TICKS antes de lo último recibido, entre dos estados conocidos.
+ * - Los demás carros: PROYECCIÓN AL PRESENTE. El `seq` de cada carro es su propio reloj (un
+ *   control por tick de su dueño). Lo último recibido de cada uno se proyecta hacia adelante
+ *   (su velocidad × lo que tardó en llegar + un ping) para verlo en el mismo instante que el
+ *   carro propio predicho; si no, se vería metros atrás de donde está y los choques pasarían
+ *   donde no se ven. El carro propio también choca contra ellos en la predicción.
  *
  * - La cámara compartida (en la partida) la calcula el servidor siguiendo al líder; aquí se
  *   interpola igual, con el reloj del servidor (`k`). Es la misma cámara con la que el servidor
@@ -34,13 +36,15 @@ const circuitos = Object.fromEntries(
   Object.values(import.meta.glob('./datos/circuitos/*.json', { eager: true, import: 'default' })).map((c) => [c.id, c]),
 )
 
-/** Lo ajeno se dibuja este tanto de ticks en el pasado (3 ticks a 30 Hz = 100 ms) */
+/** La cámara y los items sueltos se dibujan este tanto de ticks en el pasado (3 ticks a 30 Hz = 100 ms) */
 const RETRASO_TICKS = 3
 const MAX_HISTORIAL = 60
 /** Si la predicción se equivocó por más que esto (un choque fuerte, reaparecer), se brinca sin suavizar */
 const MAX_CORRECCION = 8
 /** Diferencias menores son ruido de punto flotante entre navegadores: se ignoran */
 const MIN_CORRECCION = 0.02
+/** Hasta cuántos ticks hacia adelante se proyecta a los demás (8 ticks ≈ 270 ms) */
+const MAX_EXTRAPOLAR = 8
 const CADA_PING = 2000
 
 /**
@@ -73,8 +77,6 @@ function valorEn(linea, t, mezclar) {
   const a = h[b - 1]
   return mezclar(a.valor, h[b].valor, (t - a.t) / (h[b].t - a.t))
 }
-
-const mezclarCarro = (a, b, f) => ({ ...interpolarCarro(a, b, f), vivo: b.vivo })
 
 function mezclarAngulo(a, b, f) {
   let d = b - a
@@ -121,7 +123,7 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
 
   /* ------------------------------- Jugadores ------------------------------- */
 
-  /** Los demás: id → { linea, ultimoEfecto } */
+  /** Los demás: id → { linea, visual (dónde se dibuja ahora) } */
   const otros = new Map()
   const enEscena = new Set()
 
@@ -165,9 +167,16 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
     conexion.emitir(EVENTOS.controles, { seq, ...ctrl })
     pendientes.push({ seq, ctrl })
     if (pendientes.length > 120) pendientes.shift() // el servidor dejó de contestar
+    // Marcas y polvo de los demás, desde donde se ven (al ritmo de la física)
+    for (const [id, otro] of otros) if (otro.visual?.vivo) escena.registrarEfectos(id, otro.visual)
     if (!predicho || !puedoManejar()) return
     anterior = copiarCarro(predicho)
     avanzarCarro(predicho, ctrl, PARAMETROS_FISICA, pista, tick)
+    // Choque predicho contra los demás donde se ven ahora: el golpe se siente al instante y el
+    // servidor (que choca a todos de verdad) lo confirma; la diferencia se corrige suave
+    for (const otro of otros.values()) {
+      if (otro.visual?.vivo) colisionCarros(predicho, copiarCarro(otro.visual), PARAMETROS_FISICA)
+    }
     escena.registrarEfectos(miId, predicho)
   }
 
@@ -235,7 +244,7 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
         continue
       }
       let otro = otros.get(id)
-      if (!otro) otros.set(id, (otro = { linea: crearLineaDeTiempo(), ultimoEfecto: suSeq }))
+      if (!otro) otros.set(id, (otro = { linea: crearLineaDeTiempo(), visual: null }))
       // Un carro quieto (cuenta, pausa) manda el mismo seq: se actualiza su foto igual
       if (!registrar(otro.linea, suSeq, { ...estado, vivo }, ahora)) {
         const ultimo = otro.linea.historial.at(-1)
@@ -254,6 +263,10 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
         escena.impacto(evento.x, evento.y, ITEMS[evento.item]?.color ?? '#ffffff')
         sonido.efecto('golpe')
         break
+      case 'choque':
+        escena.impacto(evento.x, evento.y, evento.descontrolados.length ? '#F4B33A' : '#F1E6CC')
+        sonido.efecto(evento.descontrolados.length ? 'coletazo' : 'golpe')
+        break
       case 'item':
         if (evento.id === miId) sonido.efecto('item')
         break
@@ -265,6 +278,41 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
         break
     }
     alEvento?.(evento)
+  }
+
+  /**
+   * Dónde dibujar a otro carro. Lo último que llegó de él es de hace medio ping, y nuestro carro
+   * (predicho) va medio ping adelante del servidor: para verlos en el mismo instante, lo último
+   * recibido se proyecta un ping completo hacia adelante con su velocidad (con tope). Así lo que
+   * ves es donde de verdad está y los choques pasan donde los ves. Cuando llega su posición real,
+   * el dibujo se acerca a ella suave en vez de brincar.
+   */
+  function presenteDe(otro, local, pingTicks, dt) {
+    const linea = otro.linea
+    const ultimo = linea.historial.at(-1)
+    const manejo = FASES_CON_MANEJO.includes(fase) && ultimo.valor.vivo
+    // Ticks desde lo último que se recibió (según el reloj de ese carro) más el ping
+    const adelante = manejo ? Math.max(0, Math.min(MAX_EXTRAPOLAR, local + linea.desfase - ultimo.t + pingTicks)) : 0
+    const s = adelante * tick
+    const objetivo = {
+      ...ultimo.valor,
+      x: ultimo.valor.x + ultimo.valor.vx * s,
+      y: ultimo.valor.y + ultimo.valor.vy * s,
+      angulo: ultimo.valor.angulo + ultimo.valor.w * s,
+    }
+    const antes = otro.visual
+    if (!antes || !manejo || Math.hypot(objetivo.x - antes.x, objetivo.y - antes.y) > MAX_CORRECCION) {
+      otro.visual = objetivo
+    } else {
+      const k = 1 - Math.exp(-18 * dt)
+      otro.visual = {
+        ...objetivo,
+        x: antes.x + (objetivo.x - antes.x) * k,
+        y: antes.y + (objetivo.y - antes.y) * k,
+        angulo: antes.angulo + diferenciaAngulo(objetivo.angulo, antes.angulo) * k,
+      }
+    }
+    return otro.visual
   }
 
   const dejar = [
@@ -307,18 +355,12 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
 
     const estados = []
     const local = relojLocal()
+    const pingTicks = (ping ?? 0) / 1000 / tick
     for (const [id, otro] of otros) {
       const linea = otro.linea
       if (!linea.historial.length) continue
-      const t = local + linea.desfase - RETRASO_TICKS
-      const estado = valorEn(linea, t, mezclarCarro)
-      if (estado.vivo) estados.push({ id, estado })
-      // Marcas y polvo, conforme su dibujo pasa por cada estado recibido
-      for (const h of linea.historial) {
-        if (h.t <= otro.ultimoEfecto || h.t > t) continue
-        if (h.valor.vivo) escena.registrarEfectos(id, h.valor)
-        otro.ultimoEfecto = h.t
-      }
+      const visual = presenteDe(otro, local, pingTicks, dt)
+      if (visual.vivo) estados.push({ id, estado: visual })
     }
 
     let mio = null
@@ -330,7 +372,24 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
       estados.push({ id: miId, estado: mio })
     }
 
-    // Cámara compartida e items sueltos del servidor, en el mismo pasado que los demás carros
+    // Nadie se dibuja encimado: a los demás se les proyecta con su última velocidad, que no sabe
+    // del choque que el servidor ya resolvió; hasta que llegue, se les separa en pantalla.
+    // Al de otro se le saca del mío; entre dos ajenos, mitad y mitad. Solo visual.
+    for (let i = 0; i < estados.length; i++) {
+      for (let j = i + 1; j < estados.length; j++) {
+        const a = estados[i]
+        const b = estados[j]
+        if (a.id === miId) separarEnPantalla(b.estado, a.estado, 1)
+        else if (b.id === miId) separarEnPantalla(a.estado, b.estado, 1)
+        else separarEnPantalla(a.estado, b.estado, 0.5)
+      }
+    }
+    for (const { id, estado } of estados) if (id !== miId && otros.has(id)) otros.get(id).visual = estado
+
+    // ?debug: what's on screen this frame, for testing tools
+    if (debug) window.__juegoEstados = estados.map(({ id, estado }) => ({ id, x: estado.x, y: estado.y, angulo: estado.angulo }))
+
+    // Cámara compartida e items sueltos del servidor, un poco en el pasado (suaves)
     const delServidor = mundo.historial.length ? valorEn(mundo, local + mundo.desfase - RETRASO_TICKS, mezclarMundo) : null
     escena.ponerEntidades(delServidor?.entidades ?? [])
 
@@ -384,6 +443,32 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
       sonido.destruir()
       escena.destruir()
     },
+  }
+}
+
+/**
+ * Saca a `mover` de encima de `fijo` (círculos de la caja de choque), moviéndolo `parte` de lo
+ * que se enciman; el resto, si queda, se le mueve a `fijo` en sentido contrario.
+ */
+function separarEnPantalla(mover, fijo, parte) {
+  const minimo = PARAMETROS_FISICA.radio * 2
+  for (const oa of HITBOX) {
+    for (const ob of HITBOX) {
+      // Con la posición de este momento: los empujones anteriores ya la movieron
+      const ax = mover.x + Math.cos(mover.angulo) * oa
+      const ay = mover.y + Math.sin(mover.angulo) * oa
+      const bx = fijo.x + Math.cos(fijo.angulo) * ob
+      const by = fijo.y + Math.sin(fijo.angulo) * ob
+      const d = Math.hypot(ax - bx, ay - by)
+      if (d >= minimo || d === 0) continue
+      const nx = (ax - bx) / d
+      const ny = (ay - by) / d
+      const encime = minimo - d
+      mover.x += nx * encime * parte
+      mover.y += ny * encime * parte
+      fijo.x -= nx * encime * (1 - parte)
+      fijo.y -= ny * encime * (1 - parte)
+    }
   }
 }
 
