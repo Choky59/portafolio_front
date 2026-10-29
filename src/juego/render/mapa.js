@@ -1,5 +1,5 @@
-import { blob, brush, fillShape, lienzo, rng, trazar } from '../pincel.js'
-import { puntoEnPista } from '../compartido/pista'
+import { blob, brush, fillShape, hatch, lienzo, rng, trazar } from '../pincel.js'
+import { alturaEn, puntoEnPista } from '../compartido/pista'
 import { COLORES } from './colores.js'
 
 /**
@@ -15,10 +15,79 @@ export function crearTexturaSuelo(pista, { escala = 8 } = {}) {
   g.setTransform(escala, 0, 0, escala, -limites.x * escala, -limites.y * escala)
 
   dibujarArena(g, limites)
+  dibujarRelieve(g, pista)
+  dibujarBarrancos(g, pista.circuito)
   dibujarCamino(g, pista)
-  dibujarZonas(g, pista.circuito)
+  dibujarZonas(g, pista)
   dibujarMeta(g, pista)
   return c
+}
+
+/**
+ * Hills drawn like a sketch: short strokes along the contour lines where the ground is steep,
+ * heavier on the slopes facing away from the afternoon sun (west), and rocks near the top.
+ */
+function dibujarRelieve(g, pista) {
+  if (!pista.circuito.elevacion?.length) return
+  const random = rng(31)
+  const { x: x0, y: y0, ancho, alto } = pista.circuito.limites
+  const paso = 2.5
+  g.save()
+  g.strokeStyle = COLORES.tinta
+  g.lineCap = 'round'
+  for (let y = y0; y < y0 + alto; y += paso) {
+    for (let x = x0; x < x0 + ancho; x += paso) {
+      // Higher ground gets a deeper ochre, so the hills read from afar
+      const h = alturaEn(pista, x + paso / 2, y + paso / 2)
+      if (h > 1) {
+        g.globalAlpha = Math.min(0.45, h / 90)
+        g.fillStyle = '#A97E4C'
+        g.fillRect(x, y, paso + 0.05, paso + 0.05)
+      }
+      const px = x + random() * paso
+      const py = y + random() * paso
+      const gx = (alturaEn(pista, px + 1, py) - alturaEn(pista, px - 1, py)) / 2
+      const gy = (alturaEn(pista, px, py + 1) - alturaEn(pista, px, py - 1)) / 2
+      const pendiente = Math.hypot(gx, gy)
+      if (pendiente < 0.06) continue
+      // Contour direction: perpendicular to the gradient
+      const cx = -gy / pendiente
+      const cy = gx / pendiente
+      const sombra = gx < 0 ? 1.3 : 0.6
+      g.globalAlpha = Math.min(0.4, pendiente * 0.9) * sombra
+      g.lineWidth = 0.18
+      g.beginPath()
+      g.moveTo(px - cx * 0.9, py - cy * 0.9)
+      g.lineTo(px + cx * 0.9 + (random() - 0.5) * 0.3, py + cy * 0.9 + (random() - 0.5) * 0.3)
+      g.stroke()
+      // Rocks scattered on the high slopes
+      if (alturaEn(pista, px, py) > 14 && random() < 0.05) {
+        g.globalAlpha = 1
+        blob(g, px, py, 0.5 + random() * 1.2, {
+          relleno: COLORES.piedra,
+          anchoContorno: 0.12,
+          irregular: 0.4,
+          seed: Math.floor(random() * 1e6),
+        })
+      }
+    }
+  }
+  g.restore()
+}
+
+/** Cliffs: a dark, densely hatched drop with an inked rim */
+function dibujarBarrancos(g, circuito) {
+  circuito.barrancos.forEach((barranco, i) => {
+    fillShape(g, barranco, {
+      relleno: '#7A5634',
+      anchoContorno: 0.5,
+      paso: 2,
+      temblor: 0.6,
+      achurado: { separacion: 0.6, ancho: 0.15, alpha: 0.5, angulo: 0.9 },
+      seed: 80 + i,
+    })
+    hatch(g, barranco, { separacion: 1.1, ancho: 0.12, alpha: 0.35, angulo: -0.7, seed: 90 + i })
+  })
 }
 
 function dibujarArena(g, { x, y, ancho, alto }) {
@@ -111,9 +180,16 @@ function dibujarCamino(g, pista) {
   }
 }
 
-function dibujarZonas(g, circuito) {
-  circuito.superficies.forEach((zona, i) => {
-    if (zona.tipo !== 'tierra') return
+/** Zones over the road: dirt, the dry riverbed, sidewalks and the plaza */
+function dibujarZonas(g, pista) {
+  pista.circuito.superficies.forEach((zona, i) => {
+    const dibujar = ESTILOS_ZONA[zona.estilo] ?? (zona.tipo === 'tierra' ? ESTILOS_ZONA.tierra : null)
+    dibujar?.(g, zona, 40 + i, pista)
+  })
+}
+
+const ESTILOS_ZONA = {
+  tierra(g, zona, seed) {
     fillShape(g, zona.poligono, {
       relleno: COLORES.tierra,
       contorno: 'rgba(34,23,15,0.45)',
@@ -121,9 +197,67 @@ function dibujarZonas(g, circuito) {
       paso: 2,
       temblor: 0.5,
       achurado: { separacion: 0.9, ancho: 0.12, alpha: 0.22 },
-      seed: 40 + i,
+      seed,
     })
-  })
+  },
+
+  /** Vado del Río: pale dry riverbed with pebbles, a thin stream and the ruts of the cars */
+  rio(g, zona, seed, pista) {
+    const random = rng(seed)
+    fillShape(g, zona.poligono, {
+      relleno: '#CDB487',
+      contorno: 'rgba(34,23,15,0.4)',
+      anchoContorno: 0.35,
+      paso: 3,
+      temblor: 1.2,
+      seed,
+    })
+    g.save()
+    g.beginPath()
+    trazar(g, zona.poligono, true)
+    g.clip()
+    const xs = zona.poligono.map((p) => p[0])
+    const ys = zona.poligono.map((p) => p[1])
+    for (let k = 0; k < 900; k++) {
+      const x = Math.min(...xs) + random() * (Math.max(...xs) - Math.min(...xs))
+      const y = Math.min(...ys) + random() * (Math.max(...ys) - Math.min(...ys))
+      blob(g, x, y, 0.2 + random() * 0.6, {
+        relleno: random() < 0.5 ? '#B9A27C' : '#A89878',
+        anchoContorno: 0.06,
+        irregular: 0.4,
+        seed: k + 1,
+      })
+    }
+    // Ruts across the riverbed where the road goes
+    for (const lado of [-3, 3]) {
+      const huella = []
+      for (let s = 0; s < pista.longitud; s += 2) {
+        const p = puntoEnPista(pista, s, lado)
+        huella.push([p.x, p.y])
+      }
+      brush(g, huella, { color: '#8F7350', ancho: 1.1, temblor: 0.3, alpha: 0.45, cerrado: true, seed: seed + lado })
+    }
+    if (zona.cauce) {
+      brush(g, zona.cauce, { color: '#6FA3C8', ancho: 2.4, paso: 3, temblor: 0.5, pasadas: 2, seed: seed + 5 })
+      brush(g, zona.cauce, { color: '#A9CFE6', ancho: 0.6, paso: 3, temblor: 0.3, pasadas: 1, seed: seed + 6 })
+    }
+    g.restore()
+  },
+
+  /** Centro sidewalks: pale concrete slabs with joints and a curb */
+  banqueta(g, zona, seed) {
+    // `paso` subdivides the sides, so the smooth stroke keeps the rectangle's corners
+    fillShape(g, zona.poligono, { relleno: '#DCCFB4', contorno: null, paso: 1, temblor: 0.1, seed })
+    hatch(g, zona.poligono, { separacion: 2, ancho: 0.08, alpha: 0.3, angulo: Math.PI / 2, seed })
+    brush(g, [...zona.poligono, zona.poligono[0]], { ancho: 0.2, temblor: 0.05, alpha: 0.6, seed: seed + 1 })
+  },
+
+  /** Plaza Zaragoza: diamond-patterned paving */
+  plaza(g, zona, seed) {
+    fillShape(g, zona.poligono, { relleno: '#E6D6B2', anchoContorno: 0.3, paso: 1.5, temblor: 0.12, seed })
+    hatch(g, zona.poligono, { separacion: 3, ancho: 0.1, alpha: 0.25, angulo: Math.PI / 4, seed: seed + 1 })
+    hatch(g, zona.poligono, { separacion: 3, ancho: 0.1, alpha: 0.25, angulo: -Math.PI / 4, seed: seed + 2 })
+  },
 }
 
 /** Checkered start/finish line across the road at s = 0 */

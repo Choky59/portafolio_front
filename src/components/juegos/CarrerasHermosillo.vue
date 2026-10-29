@@ -3,6 +3,8 @@ import { onBeforeUnmount, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { COLORES, EVENTOS, LARGO_NOMBRE, MAX_JUGADORES } from '../../juego/compartido/protocolo'
 import { crearConexion } from '../../juego/red/conexion.js'
+import { iconoItem } from '../../juego/render/iconos.js'
+import ITEMS from '../../juego/datos/items.json'
 import JuegoEnLinea from './JuegoEnLinea.vue'
 
 /**
@@ -18,7 +20,7 @@ const color = ref(COLORES.some((c) => c.id === guardado.color) ? guardado.color 
 const codigo = ref('')
 const conectando = ref(false)
 const error = ref('')
-/** { conexion, sala, miId } while in a room */
+/** { conexion, sala, estado (of the match), miId } while in a room */
 const partida = shallowRef(null)
 
 function leerGuardado() {
@@ -37,7 +39,8 @@ function guardar() {
   }
 }
 
-async function entrar(evento) {
+/** `solo`: create a room and play right away against 2 bots */
+async function entrar(evento, { solo = false } = {}) {
   error.value = ''
   if (!nombre.value.trim()) return (error.value = 'Escribe tu nombre')
   if (evento === EVENTOS.unirse && !codigo.value.trim()) return (error.value = 'Escribe el código de la sala')
@@ -53,7 +56,7 @@ async function entrar(evento) {
       salir()
       error.value = 'Se perdió la conexión con el servidor'
     })
-    partida.value = { conexion, sala: r.sala, miId: r.id }
+    partida.value = { conexion, sala: r.sala, estado: r.partida, miId: r.id, solo }
   } catch (e) {
     conexion.cerrar()
     error.value = e.message
@@ -75,7 +78,9 @@ onBeforeUnmount(() => partida.value?.conexion.cerrar())
     v-if="partida"
     :conexion="partida.conexion"
     :sala="partida.sala"
+    :partida="partida.estado"
     :mi-id="partida.miId"
+    :solo="partida.solo"
     :debug="route.query.debug !== undefined"
     @salir="salir"
   />
@@ -107,8 +112,13 @@ onBeforeUnmount(() => partida.value?.conexion.cerrar())
     <div class="lobby__opciones">
       <div class="lobby__opcion">
         <h3>Crea una sala</h3>
-        <p class="muted">Te damos un código para que se unan hasta {{ MAX_JUGADORES - 1 }} amigos. También puedes jugar solo.</p>
-        <button type="submit" class="btn" :disabled="conectando">Crear sala</button>
+        <p class="muted">Te damos un código para que se unan hasta {{ MAX_JUGADORES - 1 }} amigos, o juega solo contra bots.</p>
+        <div class="lobby__crear">
+          <button type="submit" class="btn" :disabled="conectando">Crear sala</button>
+          <button type="button" class="btn btn--ghost" :disabled="conectando" @click="entrar(EVENTOS.crear, { solo: true })">
+            Jugar contra 2 bots
+          </button>
+        </div>
       </div>
 
       <div class="lobby__opcion">
@@ -131,10 +141,110 @@ onBeforeUnmount(() => partida.value?.conexion.cerrar())
 
     <p v-if="conectando" class="lobby__aviso muted" role="status">Conectando…</p>
     <p v-else-if="error" class="lobby__aviso lobby__aviso--error" role="alert">{{ error }}</p>
+
+    <div class="lobby__reglas">
+      <h3>Cómo se juega</h3>
+      <ol>
+        <li>Una sola cámara para todos sigue al que va adelante.</li>
+        <li>Si te quedas atrás y sales de la pantalla, o caes a un barranco del Cerro, explotas.</li>
+        <li>El último carro en pie gana la ronda. El primero en llegar a 5 puntos gana la partida.</li>
+      </ol>
+      <p class="muted">
+        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> o <kbd>WASD</kbd> manejar · <kbd>Espacio</kbd> freno de mano ·
+        <kbd>Shift</kbd> o <kbd>E</kbd> usar item
+      </p>
+    </div>
+
+    <details class="lobby__items">
+      <summary>Los {{ ITEMS.length }} items de Hermosillo</summary>
+      <ul>
+        <li v-for="item in ITEMS" :key="item.id">
+          <img :src="iconoItem(item)" alt="" width="44" height="44" loading="lazy" />
+          <span>
+            <strong>{{ item.nombre }}</strong>
+            <span class="muted">{{ item.descripcion }}</span>
+          </span>
+        </li>
+      </ul>
+    </details>
   </form>
 </template>
 
 <style scoped>
+.lobby__reglas {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.lobby__reglas h3 {
+  font-size: 1.5rem;
+  margin: 0 0 6px;
+}
+
+.lobby__reglas ol {
+  margin: 0 0 10px;
+  padding-left: 1.2em;
+  display: grid;
+  gap: 4px;
+}
+
+.lobby__reglas p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.lobby kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 1px 6px;
+  margin: 0 1px;
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 6px;
+  font: 600 0.8rem var(--font-body);
+  text-align: center;
+}
+
+.lobby__items summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.lobby__items ul {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+@media (min-width: 720px) {
+  .lobby__items ul {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.lobby__items li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.lobby__items img {
+  flex: none;
+  border-radius: 10px;
+  background: #f1e6cc;
+}
+
+.lobby__items strong {
+  display: block;
+  font: 400 1.2rem / 1.1 var(--font-title);
+}
+
+.lobby__items .muted {
+  font-size: 0.85rem;
+}
+
 .lobby {
   padding: 20px;
   display: grid;
@@ -204,6 +314,12 @@ onBeforeUnmount(() => partida.value?.conexion.cerrar())
 
 .lobby__opcion p {
   margin: 0 0 12px;
+}
+
+.lobby__crear {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 
 .lobby__unirse {

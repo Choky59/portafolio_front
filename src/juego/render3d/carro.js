@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { COLORES } from '../render/colores.js'
+import { DECORACION } from './decoracion.js'
 import { pieza } from './materiales.js'
 
 /**
@@ -32,24 +33,64 @@ export function crearCarro3D(color) {
 
   const ruedaGeo = new THREE.CylinderGeometry(0.46, 0.46, 0.42, 12).rotateX(Math.PI / 2)
   const delanteras = []
+  const ruedas = []
   for (const [x, z] of [[1.35, -1.02], [1.35, 1.02], [-1.35, -1.02], [-1.35, 1.02]]) {
     const rueda = pieza(ruedaGeo, COLORES.tinta, { grosor: 0.04 })
     rueda.position.set(x, 0.46, z)
     grupo.add(rueda)
+    ruedas.push(rueda)
     if (x > 0) delanteras.push(rueda)
   }
 
-  return { grupo, cuerpo, delanteras }
+  // El camión urbano (turbo): the car turns into a bus for a while, with the player's color on top
+  const camion = DECORACION.camion(0.55)
+  const techoCamion = pieza(new THREE.BoxGeometry(5.6, 0.12, 1.2), color, { grosor: 0.03, sombra: false })
+  techoCamion.position.y = 2.15
+  camion.add(techoCamion)
+  camion.visible = false
+  grupo.add(camion)
+
+  // Stunned: little stars spinning over the roof
+  const estrellas = new THREE.Group()
+  for (let i = 0; i < 3; i++) {
+    const estrella = pieza(new THREE.OctahedronGeometry(0.28, 0), '#F6C445', { grosor: 0.03, sombra: false })
+    const a = (i / 3) * Math.PI * 2
+    estrella.position.set(Math.cos(a) * 1.1, 0, Math.sin(a) * 1.1)
+    estrellas.add(estrella)
+  }
+  estrellas.position.y = 2.7
+  estrellas.visible = false
+  grupo.add(estrellas)
+
+  return { grupo, cuerpo, delanteras, ruedas, camion, estrellas }
 }
 
-/** Places the car from its physics state and adds a bit of lean (render only) */
-export function ponerCarro(carro3d, estado) {
+/**
+ * Places the car from its physics state on the ground (which can have hills), pitched and
+ * rolled with the slope, and adds a bit of lean in the turns (render only).
+ */
+export function ponerCarro(carro3d, estado, altura = () => 0) {
   const { grupo, cuerpo, delanteras } = carro3d
-  grupo.position.set(estado.x, 0, estado.y)
-  grupo.rotation.y = -estado.angulo
+  const { x, y, angulo } = estado
+  const c = Math.cos(angulo)
+  const s = Math.sin(angulo)
+  // Slope under the car: height difference between nose and tail, and between both sides
+  const frente = altura(x + c * 1.6, y + s * 1.6) - altura(x - c * 1.6, y - s * 1.6)
+  const lado = altura(x - s * 0.9, y + c * 0.9) - altura(x + s * 0.9, y - c * 0.9)
+  grupo.position.set(x, altura(x, y), y)
+  // YXZ: heading first, then roll on the car's length (+X) and pitch on its width (+Z, its right)
+  grupo.rotation.set(-Math.atan2(lado, 1.8), -angulo, Math.atan2(frente, 3.2), 'YXZ')
   // Lean out of the turn, more when sliding
   const inclinacion = Math.max(-0.12, Math.min(0.12, estado.w * 0.035 * (1 + estado.derrape)))
   cuerpo.rotation.x = inclinacion
   // Front wheels point where the car is turning
   for (const rueda of delanteras) rueda.rotation.y = -Math.max(-0.5, Math.min(0.5, estado.w * 0.2))
+
+  // Item effects that show on the car
+  const turbo = estado.turbo > 0
+  carro3d.camion.visible = turbo
+  cuerpo.visible = !turbo
+  for (const rueda of carro3d.ruedas) rueda.visible = !turbo
+  carro3d.estrellas.visible = estado.aturdido > 0
+  if (estado.aturdido > 0) carro3d.estrellas.rotation.y = performance.now() / 150
 }

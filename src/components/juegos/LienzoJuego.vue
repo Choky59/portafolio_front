@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { iconoItem } from '../../juego/render/iconos.js'
 
 /**
  * The game's canvas with its HUD and the "click to drive" overlay. The canvas takes keyboard
@@ -44,11 +45,28 @@ defineExpose({
       </span>
     </div>
 
-    <slot />
+    <!-- Out of the shared camera's picture: a last chance to catch up before blowing up -->
+    <div v-if="hud.fuera" class="lienzo-juego__fuera" aria-live="assertive">¡Alcánzalos!</div>
+
+    <!-- The item you're carrying: use it with Shift or E -->
+    <div v-if="hud.item !== undefined" class="lienzo-juego__item" :class="{ 'lienzo-juego__item--vacio': !hud.item }">
+      <template v-if="hud.item">
+        <img :src="iconoItem(hud.item)" alt="" width="48" height="48" />
+        <span>
+          <strong>{{ hud.item.nombre }}</strong>
+          <small><kbd>Shift</kbd> o <kbd>E</kbd></small>
+        </span>
+      </template>
+      <span v-else class="lienzo-juego__sin-item">Agarra una caja <b>?</b></span>
+    </div>
 
     <button v-if="!enfocado" type="button" class="lienzo-juego__pausa" @click="lienzo.focus()">
       Haz clic para manejar
     </button>
+
+    <!-- Overlays from the parent (messages, results) go above "click to drive": pressing one of
+         their buttons blurs the canvas, and the click must still land on the button -->
+    <slot />
   </div>
 </template>
 
@@ -123,6 +141,87 @@ defineExpose({
   display: block;
   height: 100%;
   background: #e4572e;
+}
+
+.lienzo-juego__item {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: calc(100% - 24px);
+  padding: 6px 12px 6px 6px;
+  border-radius: 16px;
+  background: rgba(34, 23, 15, 0.75);
+  color: #f1e6cc;
+  pointer-events: none;
+}
+
+.lienzo-juego__item img {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #f1e6cc;
+}
+
+.lienzo-juego__item strong {
+  display: block;
+  font: 400 1.3rem / 1.1 var(--font-title);
+}
+
+.lienzo-juego__item small {
+  font-size: 0.75rem;
+  opacity: 0.8;
+}
+
+.lienzo-juego__item kbd {
+  padding: 0 4px;
+  border: 1px solid rgba(241, 230, 204, 0.4);
+  border-radius: 4px;
+  font: 600 0.7rem var(--font-body);
+}
+
+.lienzo-juego__item--vacio {
+  padding: 6px 12px;
+  opacity: 0.8;
+}
+
+.lienzo-juego__sin-item {
+  font-size: 0.8rem;
+}
+
+.lienzo-juego__sin-item b {
+  color: #f4b33a;
+}
+
+.lienzo-juego__fuera {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: end center;
+  padding-bottom: 64px;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 6px #e4572e, inset 0 0 60px rgba(228, 87, 46, 0.55);
+  color: #f1e6cc;
+  font: 400 clamp(1.8rem, 5vw, 2.8rem) var(--font-title);
+  -webkit-text-stroke: 1.5px #22170f;
+  animation: lienzo-juego-alerta 0.5s ease-in-out infinite alternate;
+}
+
+@keyframes lienzo-juego-alerta {
+  from {
+    opacity: 0.55;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lienzo-juego__fuera {
+    animation: none;
+  }
 }
 
 .lienzo-juego__pausa {

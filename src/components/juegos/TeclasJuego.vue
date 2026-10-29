@@ -7,7 +7,8 @@ defineProps({
 <template>
   <p class="teclas muted">
     <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> o <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> manejar ·
-    <kbd>Espacio</kbd> freno de mano<template v-if="reiniciar"> · <kbd>R</kbd> volver a la salida</template>
+    <kbd>Espacio</kbd> freno de mano<template v-if="reiniciar"> · <kbd>R</kbd> volver a la salida</template
+    ><template v-else> · <kbd>Shift</kbd> o <kbd>E</kbd> usar item</template>
   </p>
 </template>
 

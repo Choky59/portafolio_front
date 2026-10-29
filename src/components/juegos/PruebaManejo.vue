@@ -1,6 +1,6 @@
 <script setup>
 import { onBeforeUnmount, onMounted, reactive, ref, toRaw } from 'vue'
-import circuito from '../../juego/datos/circuitos/prueba.json'
+import { useRoute } from 'vue-router'
 import { PARAMETROS_FISICA } from '../../juego/compartido/fisica'
 import { crearJuegoLocal } from '../../juego/local.js'
 import LienzoJuego from './LienzoJuego.vue'
@@ -13,6 +13,14 @@ const props = defineProps({
   enfocarAlInicio: { type: Boolean, default: false },
 })
 
+// ?circuito=hermosillo&s=450 picks the circuit and where on the lap to start
+const circuitos = Object.fromEntries(
+  Object.values(import.meta.glob('../../juego/datos/circuitos/*.json', { eager: true, import: 'default' })).map((c) => [c.id, c]),
+)
+const route = useRoute()
+const circuito = circuitos[route.query.circuito] ?? circuitos.prueba
+const inicio = Number(route.query.s) || 0
+
 const iniciales = structuredClone(PARAMETROS_FISICA)
 const params = reactive(structuredClone(PARAMETROS_FISICA))
 
@@ -22,7 +30,12 @@ let juego = null
 
 onMounted(() => {
   // The game reads the raw object every tick; the panel writes through the reactive proxy
-  juego = crearJuegoLocal(vista.value.lienzo, { circuito, params: toRaw(params), alEstado: (e) => (hud.value = e) })
+  juego = crearJuegoLocal(vista.value.lienzo, {
+    circuito,
+    inicio,
+    params: toRaw(params),
+    alEstado: (e) => (hud.value = e),
+  })
   if (props.enfocarAlInicio) vista.value.enfocar()
 })
 

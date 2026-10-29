@@ -1,4 +1,4 @@
-import { prepararPista } from './compartido/pista'
+import { alturaEn, prepararPista } from './compartido/pista'
 import { avanzarCarro, copiarCarro, crearCarro, rapidez } from './compartido/fisica'
 import { crearCamara, seguir } from './compartido/camara'
 import { crearEntrada, crearTeclado } from './entrada/teclado.js'
@@ -13,14 +13,14 @@ import { crearEscena3D } from './render3d/escena.js'
  */
 export const TICK = 1 / 30
 
-export function crearJuegoLocal(canvas, { circuito, params, color = COLORES_CARRO[0].color, alEstado }) {
+export function crearJuegoLocal(canvas, { circuito, params, color = COLORES_CARRO[0].color, alEstado, inicio = 0 }) {
   const pista = prepararPista(circuito)
   const escena = crearEscena3D(canvas, pista)
   const entrada = crearEntrada([crearTeclado(canvas)])
   const camara = crearCamara()
   escena.agregarCarro('yo', color)
 
-  let carro = crearCarro(pista, 0)
+  let carro = crearCarro(pista, inicio)
   let anterior = copiarCarro(carro)
   let acumulado = 0
   let ultimo = performance.now()
@@ -45,7 +45,7 @@ export function crearJuegoLocal(canvas, { circuito, params, color = COLORES_CARR
       acumulado -= TICK
     }
     const visible = interpolarCarro(anterior, carro, acumulado / TICK)
-    seguir(camara, pista, visible, dt)
+    seguir(camara, pista, { ...visible, altura: alturaEn(pista, visible.x, visible.y) }, dt)
     escena.dibujar([{ id: 'yo', estado: visible }], camara, dt)
 
     if (alEstado && ahora - ultimoAviso > 100) {
@@ -58,7 +58,7 @@ export function crearJuegoLocal(canvas, { circuito, params, color = COLORES_CARR
 
   return {
     reiniciar() {
-      carro = crearCarro(pista, 0)
+      carro = crearCarro(pista, inicio)
       anterior = copiarCarro(carro)
       camara.iniciada = false
       escena.limpiarEfectos()

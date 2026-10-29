@@ -23,12 +23,16 @@ const TECLAS = {
 /** Listens on `elemento` (the focused game canvas) so the arrows and space don't scroll the page */
 export function crearTeclado(elemento) {
   const activas = new Set()
+  // The item key is a tap: remember it was pressed until the next read, or a tap shorter
+  // than one tick (33 ms) would be lost between two reads
+  let itemPendiente = false
 
   const abajo = (e) => {
     const accion = TECLAS[e.code]
     if (!accion) return
     e.preventDefault()
     activas.add(accion)
+    if (accion === 'item' && !e.repeat) itemPendiente = true
   }
   const arriba = (e) => {
     const accion = TECLAS[e.code]
@@ -43,12 +47,14 @@ export function crearTeclado(elemento) {
 
   return {
     leer() {
+      const item = activas.has('item') || itemPendiente
+      itemPendiente = false
       return {
         giro: (activas.has('derecha') ? 1 : 0) - (activas.has('izquierda') ? 1 : 0),
         acel: activas.has('acel') ? 1 : 0,
         freno: activas.has('freno') ? 1 : 0,
         mano: activas.has('mano'),
-        item: activas.has('item'),
+        item,
       }
     },
     destruir() {
