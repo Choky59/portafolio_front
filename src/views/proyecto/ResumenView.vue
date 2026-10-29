@@ -4,6 +4,7 @@ import ProblemaSolucion from '../../components/secciones/ProblemaSolucion.vue'
 import Retos from '../../components/secciones/Retos.vue'
 import SerieVideos from '../../components/proyecto/SerieVideos.vue'
 import { dashboards } from '../../components/dashboards'
+import { juegos } from '../../components/juegos'
 import { analisis, analisisEnResumen, extractoResumen } from '../../components/analisis'
 import { useHeadSeccion, useProyecto } from '../../composables/useProyecto'
 
@@ -14,6 +15,7 @@ const dashboard = computed(() => (proyecto.value.enVivo ? (dashboards[proyecto.v
 const analisisArriba = computed(() => (analisisEnResumen(proyecto.value.slug) ? analisis[proyecto.value.slug] : null))
 // With the analysis on top, the live chart stays hidden (and not polling) until asked for
 const mostrarVivo = ref(false)
+const juego = computed(() => juegos[proyecto.value.slug] ?? null)
 const extracto = computed(() => extractoResumen[proyecto.value.slug] ?? null)
 const vivoVisible = computed(() => !analisisArriba.value || mostrarVivo.value)
 const hayProblemaSolucion = computed(
@@ -22,6 +24,11 @@ const hayProblemaSolucion = computed(
 </script>
 
 <template>
+  <section v-if="juego" class="bloque" aria-labelledby="r-juego">
+    <h2 id="r-juego" class="bloque__titulo">Juega</h2>
+    <component :is="juego" />
+  </section>
+
   <component :is="analisisArriba" v-if="analisisArriba" class="bloque" />
 
   <section v-if="dashboard" class="bloque" aria-labelledby="r-vivo">

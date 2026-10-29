@@ -13,6 +13,8 @@ export default defineConfig({
     // In dev the API is reached through the same origin, so no CORS and no VITE_API_URL needed
     proxy: {
       '/api': 'http://localhost:3000',
+      // The game's Socket.IO (WebSocket) lives on the same backend
+      '/socket.io': { target: 'http://localhost:3000', ws: true },
     },
   },
 })

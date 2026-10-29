@@ -96,6 +96,16 @@ const routes = [
   },
 ]
 
+// Proyecto #3 test bench while it's being built; not part of the production build
+if (import.meta.env.DEV) {
+  routes.splice(-1, 0, {
+    path: '/laboratorio/carreras',
+    name: 'laboratorio-carreras',
+    component: () => import('../views/LaboratorioCarrerasView.vue'),
+    meta: { title: 'Laboratorio · Carreras', noindex: true },
+  })
+}
+
 export const router = createRouter({
   history: createWebHistory(),
   routes,

@@ -1,6 +1,7 @@
 /**
  * Fills the Content-Security-Policy placeholders in firebase.json before a deploy:
  *   https://TU-API.herokuapp.com  -> origin of VITE_API_URL (required)
+ *   wss://TU-API.herokuapp.com    -> the same host over WebSocket (the game's Socket.IO)
  *   https://TU-CDN.example.com    -> CDN_ORIGINS, space/comma separated (optional; removed if empty)
  *
  * Runs in CI on a fresh checkout. Locally:  VITE_API_URL=... node scripts/preparar-firebase.mjs
@@ -9,6 +10,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 
 const API_PLACEHOLDER = 'https://TU-API.herokuapp.com'
+const WS_PLACEHOLDER = 'wss://TU-API.herokuapp.com'
 const CDN_PLACEHOLDER = 'https://TU-CDN.example.com'
 
 function origin(url, nombre) {
@@ -48,6 +50,7 @@ for (const regla of config.hosting.headers) {
 
     header.value = header.value
       .replaceAll(API_PLACEHOLDER, apiOrigin)
+      .replaceAll(WS_PLACEHOLDER, apiOrigin.replace(/^https:/, 'wss:'))
       .replaceAll(CDN_PLACEHOLDER, cdnOrigins.join(' '))
       .replace(/ {2,}/g, ' ')
       .replace(/ ;/g, ';')

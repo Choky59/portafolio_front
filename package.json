@@ -11,10 +11,13 @@
     "dev:back": "npm --prefix ../portafolio_back run dev",
     "dev:full": "concurrently -n back,front -c yellow,cyan \"npm:dev:back\" \"npm:dev\"",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "juego:sync": "node scripts/juego-sync.mjs",
+    "juego:check": "node scripts/juego-sync.mjs --check"
   },
   "dependencies": {
     "@googlemaps/markerclusterer": "^2.6.2",
+    "socket.io-client": "^4.8.1",
     "three": "^0.186.1",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0"
