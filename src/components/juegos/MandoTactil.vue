@@ -11,9 +11,9 @@ import { crearInclinacion } from '../../juego/entrada/tactil.js'
  * played on the phone (`superpuesto`: no background, and only the controls take touches, so the
  * rest of the picture stays free). The slot goes in the middle (the remote shows the item there).
  *
- * Steering is by tilting the phone like a steering wheel (crearInclinacion) or with the joystick;
- * a small button switches, and the choice is remembered. Tilting, a wheel takes the joystick's
- * place: it turns with the phone, and tapping it makes the current position "straight".
+ * Steering is by tilting the phone side to side, like a box of water (crearInclinacion), or with
+ * the joystick; a small button switches, and the choice is remembered. Tilting, a wheel takes the
+ * joystick's place: it turns as you steer, and tapping it makes the current tilt "straight".
  */
 const props = defineProps({
   mando: { type: Object, required: true },
@@ -195,7 +195,7 @@ function soltar(cual) {
       type="button"
       class="mando__pad mando__volante"
       :class="{ 'mando__volante--apagado': !inclinando }"
-      aria-label="Volante: inclina el celular; tócalo para centrarlo"
+      aria-label="Volante: baja un lado del celular para girar hacia ese lado; tócalo para centrarlo"
       @click="tocarVolante"
     >
       <svg viewBox="-50 -50 100 100" :style="{ transform: `rotate(${volante * 70}deg)` }" aria-hidden="true">
