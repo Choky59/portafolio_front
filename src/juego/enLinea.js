@@ -125,15 +125,22 @@ function mezclarMundo(a, b, f) {
   return { cam: mezclarCamara(a.cam, b.cam, f), entidades }
 }
 
-export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCambiarSala, alEvento, debug = false }) {
+/**
+ * `mando`: on-screen touch controls (entrada/tactil.js), when the game is played on a phone; the
+ * keyboard keeps working too. `ligero`: lighter rendering for phones.
+ */
+export function crearJuegoEnLinea(
+  canvas,
+  { conexion, sala, miId, alEstado, alCambiarSala, alEvento, debug = false, mando = null, ligero = false },
+) {
   const circuito = circuitos[sala.circuito]
   if (!circuito) throw new Error(`No tengo el circuito "${sala.circuito}" (npm run juego:sync)`)
   const pista = prepararPista(circuito)
   const tick = 1 / sala.tickHz
-  const escena = crearEscena3D(canvas, pista, { items: ITEMS })
+  const escena = crearEscena3D(canvas, pista, { items: ITEMS, ligero })
   // Modo local: nobody looks at their phone, so each car shows its item over it
   escena.mostrarItems(!!sala.local)
-  const entrada = crearEntrada([crearTeclado(canvas)])
+  const entrada = crearEntrada(mando ? [crearTeclado(canvas), mando] : [crearTeclado(canvas)])
   const camaraPropia = crearCamara()
   // The click that created or joined the room counts as the gesture that unlocks audio
   const sonido = crearSonido()

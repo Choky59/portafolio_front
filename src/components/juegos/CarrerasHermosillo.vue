@@ -105,8 +105,21 @@ onBeforeUnmount(() => {
 
 /* ------------------------------ Getting in ------------------------------ */
 
+/**
+ * Playing on the phone: same rooms as everybody (computers and phones play together); only the
+ * controls (on screen, the car goes on its own) and the view (whole screen) change. Full screen
+ * and landscape are asked right on the tap: browsers only allow it from a user gesture.
+ */
+function entrarCelular(evento, opciones = {}) {
+  if (nombre.value.trim()) {
+    document.documentElement.requestFullscreen?.().catch(() => {})
+    screen.orientation?.lock?.('landscape').catch(() => {})
+  }
+  entrar(evento, { ...opciones, celular: true })
+}
+
 /** `solo`: create a room and play right away against 2 bots. `sala`: the code to join, from the list */
-async function entrar(evento, { solo = false, sala = codigo.value } = {}) {
+async function entrar(evento, { solo = false, sala = codigo.value, celular = false } = {}) {
   error.value = ''
   if (!nombre.value.trim()) return (error.value = 'Escribe tu nombre')
   if (evento === EVENTOS.unirse && !String(sala).trim()) return (error.value = 'Escribe el código de la sala')
@@ -127,9 +140,10 @@ async function entrar(evento, { solo = false, sala = codigo.value } = {}) {
       salir()
       error.value = 'Se perdió la conexión con el servidor'
     })
-    partida.value = { conexion, sala: r.sala, estado: r.partida, miId: r.id, solo }
+    partida.value = { conexion, sala: r.sala, estado: r.partida, miId: r.id, solo, celular }
   } catch (e) {
     error.value = e.message
+    if (celular && document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
   } finally {
     conectando.value = false
   }
@@ -161,6 +175,7 @@ async function crearPantalla() {
 }
 
 function salir() {
+  if (partida.value?.celular && document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
   partida.value?.conexion.cerrar()
   partida.value = null
   refrescarSalas()
@@ -177,6 +192,7 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
     :partida="partida.estado"
     :mi-id="partida.miId"
     :solo="partida.solo"
+    :celular="!!partida.celular"
     :debug="route.query.debug !== undefined"
     @salir="salir"
   />
@@ -223,6 +239,32 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
           <button type="submit" class="btn" :disabled="conectando">Crear sala</button>
           <button type="button" class="btn btn--ghost" :disabled="conectando" @click="entrar(EVENTOS.crear, { solo: true })">
             Jugar contra 2 bots
+          </button>
+        </div>
+      </div>
+
+      <div class="lobby__opcion">
+        <h3>Jugar en el celular</h3>
+        <p class="muted">
+          El juego en tu celular con controles en pantalla; el carro avanza solo. Puedes jugar con amigos en compu o en
+          celular.
+        </p>
+        <div class="lobby__crear">
+          <button type="button" class="btn" :disabled="conectando" @click="entrarCelular(EVENTOS.crear)">Crear sala</button>
+          <button type="button" class="btn btn--ghost" :disabled="conectando" @click="entrarCelular(EVENTOS.crear, { solo: true })">
+            Contra 2 bots
+          </button>
+        </div>
+        <div class="lobby__unirse lobby__unirse--celular">
+          <input
+            v-model="codigo"
+            class="input"
+            placeholder="HMO-0000"
+            aria-label="Código de la sala (celular)"
+            autocomplete="off"
+          />
+          <button type="button" class="btn btn--ghost" :disabled="conectando" @click="entrarCelular(EVENTOS.unirse)">
+            Unirse
           </button>
         </div>
       </div>
@@ -599,6 +641,10 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
 .lobby__unirse {
   display: flex;
   gap: 8px;
+}
+
+.lobby__unirse--celular {
+  margin-top: 8px;
 }
 
 .lobby__unirse .input {

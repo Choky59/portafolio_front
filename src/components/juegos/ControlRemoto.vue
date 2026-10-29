@@ -5,7 +5,9 @@ import { EVENTOS, LARGO_NOMBRE, desempacarCarro } from '../../juego/compartido/p
 import { crearConexion } from '../../juego/red/conexion.js'
 import { colorCarro } from '../../juego/render/colores.js'
 import { iconoItem } from '../../juego/render/iconos.js'
+import { crearMando } from '../../juego/entrada/tactil.js'
 import ITEMS from '../../juego/datos/items.json'
+import MandoTactil from './MandoTactil.vue'
 
 /**
  * Proyecto #3, modo local: the phone as a game controller. Everyone looks at the same screen (a
@@ -19,7 +21,6 @@ import ITEMS from '../../juego/datos/items.json'
  * car from the snapshots (alive, item) to show it and to buzz when something happens to it.
  */
 const GUARDADO = 'carreras:control'
-const ZONA_MUERTA = 0.12
 const route = useRoute()
 
 const nombre = ref(leerNombre())
@@ -56,10 +57,8 @@ const estado = computed(() => {
 
 /* ------------------------------- Controls ------------------------------- */
 
-const giro = ref(0)
-const freno = ref(false)
-let itemPendiente = false
-const itemApretado = ref(false)
+/** The on-screen controller (joystick, Item, Frenar) writes here; one control goes out per tick */
+const mando = crearMando()
 let seq = 0
 let reloj = 0
 let candado = null
@@ -67,80 +66,7 @@ let candado = null
 function enviar() {
   if (!juego.value) return
   seq++
-  juego.value.conexion.emitir(EVENTOS.controles, {
-    seq,
-    giro: giro.value,
-    // Always on the gas, except while braking (stopped, braking backs up)
-    acel: freno.value ? 0 : 1,
-    freno: freno.value ? 1 : 0,
-    mano: false,
-    item: itemApretado.value || itemPendiente,
-  })
-  itemPendiente = false
-}
-
-/** Joystick: only left and right matter (steering); the knob follows the finger inside the pad */
-const pad = ref(null)
-const perilla = ref({ x: 0, y: 0 })
-let dedoPad = null
-
-function moverPad(e) {
-  const caja = pad.value.getBoundingClientRect()
-  const radio = caja.width / 2
-  let dx = (e.clientX - (caja.left + radio)) / radio
-  let dy = (e.clientY - (caja.top + radio)) / radio
-  const largo = Math.hypot(dx, dy)
-  if (largo > 1) {
-    dx /= largo
-    dy /= largo
-  }
-  perilla.value = { x: dx, y: dy }
-  const x = Math.abs(dx) < ZONA_MUERTA ? 0 : Math.sign(dx) * ((Math.abs(dx) - ZONA_MUERTA) / (1 - ZONA_MUERTA))
-  giro.value = Math.max(-1, Math.min(1, x))
-}
-
-/** Keeps getting the finger's moves even if it slides off the element (some browsers refuse: no harm) */
-function capturar(elemento, e) {
-  try {
-    elemento.setPointerCapture(e.pointerId)
-  } catch {
-    // Without capture it still works while the finger stays on it
-  }
-}
-
-function tocarPad(e) {
-  dedoPad = e.pointerId
-  capturar(pad.value, e)
-  moverPad(e)
-}
-
-function soltarPad(e) {
-  if (e.pointerId !== dedoPad) return
-  dedoPad = null
-  perilla.value = { x: 0, y: 0 }
-  giro.value = 0
-}
-
-/** A button: held while the finger is on it */
-function boton(cual) {
-  return {
-    onPointerdown(e) {
-      capturar(e.currentTarget, e)
-      if (cual === 'freno') freno.value = true
-      if (cual === 'item') {
-        itemApretado.value = true
-        itemPendiente = true
-      }
-      navigator.vibrate?.(12)
-    },
-    onPointerup: () => soltar(cual),
-    onPointercancel: () => soltar(cual),
-  }
-}
-
-function soltar(cual) {
-  if (cual === 'freno') freno.value = false
-  if (cual === 'item') itemApretado.value = false
+  juego.value.conexion.emitir(EVENTOS.controles, { seq, ...mando.leer() })
 }
 
 /* ------------------------------ Joining ------------------------------ */
@@ -205,6 +131,7 @@ function escuchar(conexion) {
 
 function terminar(motivo = '') {
   clearInterval(reloj)
+  mando.soltarTodo()
   candado?.release?.().catch(() => {})
   candado = null
   juego.value?.conexion.cerrar()
@@ -243,35 +170,12 @@ onBeforeUnmount(() => terminar())
       <button type="button" class="control__salir" @click="terminar()">Salir</button>
     </header>
 
-    <div class="control__cuerpo">
-      <div
-        ref="pad"
-        class="control__pad"
-        aria-label="Volante: desliza a la izquierda o a la derecha"
-        @pointerdown="tocarPad"
-        @pointermove="dedoPad !== null && moverPad($event)"
-        @pointerup="soltarPad"
-        @pointercancel="soltarPad"
-      >
-        <span class="control__flecha control__flecha--izq">◀</span>
-        <span class="control__flecha control__flecha--der">▶</span>
-        <span class="control__perilla" :style="{ transform: `translate(${perilla.x * 60}%, ${perilla.y * 60}%)` }"></span>
-      </div>
-
+    <MandoTactil :mando="mando">
       <div class="control__item" :class="{ 'control__item--vacio': !item }">
         <img v-if="item" :src="iconoItem(item)" alt="" />
         <span>{{ item ? item.nombre : 'Sin item' }}</span>
       </div>
-
-      <div class="control__botones">
-        <button type="button" class="control__boton control__boton--item" :class="{ activo: itemApretado }" v-bind="boton('item')">
-          Item
-        </button>
-        <button type="button" class="control__boton control__boton--freno" :class="{ activo: freno }" v-bind="boton('freno')">
-          Frenar
-        </button>
-      </div>
-    </div>
+    </MandoTactil>
     <p class="control__girar">Gira tu celular para jugar más cómodo</p>
   </div>
 </template>
@@ -370,53 +274,6 @@ onBeforeUnmount(() => terminar())
   padding: 4px 12px;
 }
 
-.control__cuerpo {
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 20px 20px;
-}
-
-.control__pad {
-  justify-self: start;
-  position: relative;
-  width: min(42vw, 62vh, 260px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(241, 230, 204, 0.12), rgba(241, 230, 204, 0.04));
-  border: 3px solid rgba(241, 230, 204, 0.25);
-  display: grid;
-  place-items: center;
-}
-
-.control__perilla {
-  width: 42%;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: var(--color);
-  border: 4px solid #f1e6cc;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
-  pointer-events: none;
-}
-
-.control__flecha {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  opacity: 0.35;
-  font-size: 1.4rem;
-  pointer-events: none;
-}
-
-.control__flecha--izq {
-  left: 10%;
-}
-
-.control__flecha--der {
-  right: 10%;
-}
-
 .control__item {
   display: grid;
   justify-items: center;
@@ -437,91 +294,14 @@ onBeforeUnmount(() => terminar())
   opacity: 0.5;
 }
 
-.control__botones {
-  justify-self: end;
-  align-self: stretch;
-  display: grid;
-  /* One column on the right: Item on top, Frenar under it (where the thumb rests) */
-  grid-template-columns: auto;
-  grid-template-rows: 1fr auto;
-  grid-template-areas:
-    'item'
-    'freno';
-  justify-items: center;
-  gap: 10px;
-}
-
-.control__boton {
-  border: 0;
-  border-radius: 50%;
-  color: #22170f;
-  font: 400 1.3rem var(--font-title);
-  box-shadow: 0 6px 0 rgba(0, 0, 0, 0.45);
-  touch-action: none;
-}
-
-.control__boton.activo {
-  transform: translateY(4px);
-  box-shadow: 0 2px 0 rgba(0, 0, 0, 0.45);
-  filter: brightness(1.15);
-}
-
-.control__boton--freno {
-  grid-area: freno;
-  align-self: end;
-  width: min(26vw, 40vh, 160px);
-  aspect-ratio: 1;
-  background: #e4572e;
-}
-
-.control__boton--item {
-  grid-area: item;
-  align-self: end;
-  width: min(19vw, 30vh, 120px);
-  aspect-ratio: 1;
-  background: #f6c445;
-}
-
 .control__girar {
   display: none;
 }
 
-/* Upright phone: still usable, but everything stacked and a hint to turn it */
+/* Upright phone: still usable (the controller stacks itself), with a hint to turn it */
 @media (orientation: portrait) {
-  /* The item in the middle; under it, the wheel on the left and the buttons on the right */
-  .control__cuerpo {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr auto;
-    grid-template-areas:
-      'item item'
-      'pad botones';
-    align-items: end;
-    padding-bottom: 32px;
-  }
-
   .control__item {
-    grid-area: item;
-    align-self: center;
-    justify-self: center;
     max-width: none;
-  }
-
-  .control__pad {
-    grid-area: pad;
-    width: min(44vw, 220px);
-  }
-
-  .control__botones {
-    grid-area: botones;
-    align-self: end;
-  }
-
-  .control__boton--freno {
-    width: min(26vw, 130px);
-  }
-
-  .control__boton--item {
-    width: min(20vw, 100px);
   }
 
   .control__girar {

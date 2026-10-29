@@ -2,10 +2,12 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
 import QRCode from 'qrcode'
 import { crearJuegoEnLinea } from '../../juego/enLinea.js'
+import { crearMando } from '../../juego/entrada/tactil.js'
 import { EVENTOS, MAX_JUGADORES } from '../../juego/compartido/protocolo'
 import { colorCarro } from '../../juego/render/colores.js'
 import AvisoPartida from './AvisoPartida.vue'
 import LienzoJuego from './LienzoJuego.vue'
+import MandoTactil from './MandoTactil.vue'
 import PanelSonido from './PanelSonido.vue'
 import ResultadosPartida from './ResultadosPartida.vue'
 import TeclasJuego from './TeclasJuego.vue'
@@ -19,6 +21,8 @@ const props = defineProps({
   debug: { type: Boolean, default: false },
   /** Single player: add 2 bots and start as soon as the game is on screen */
   solo: { type: Boolean, default: false },
+  /** Playing on the phone: the game on the whole screen with the controls over it (the car goes on its own) */
+  celular: { type: Boolean, default: false },
 })
 const emit = defineEmits(['salir'])
 
@@ -70,6 +74,15 @@ const dejarPartida = props.conexion.escuchar(EVENTOS.partida, (p) => {
   if (p.fase !== 'espera') error.value = ''
 })
 
+/** Phone: the on-screen controls (joystick, Item, Frenar) feed the game like the keyboard */
+const mando = props.celular ? crearMando() : null
+// ?debug: the touch controls' state, for testing tools
+if (props.debug && mando) window.__mando = mando.estado
+let candado = null
+/** The controls hide when you're out (a tap on the picture throws a meteor) and on the results */
+const conMando = computed(() => props.celular && hud.value.vivo !== false && partidaActual.value.fase !== 'resultados')
+const miColor = computed(() => jugadores.value[props.miId]?.color)
+
 onMounted(async () => {
   juego = crearJuegoEnLinea(vista.value.lienzo, {
     conexion: props.conexion,
@@ -78,7 +91,13 @@ onMounted(async () => {
     alEstado: (e) => (hud.value = e),
     alCambiarSala: (s) => (salaActual.value = s),
     debug: props.debug,
+    mando,
+    ligero: props.celular,
   })
+  if (props.celular) {
+    screen.orientation?.lock?.('landscape').catch(() => {})
+    candado = await navigator.wakeLock?.request('screen').catch(() => null)
+  }
   sonido.value = juego.sonido
   vista.value.enfocar()
   // Here and not before: the game is already listening, so it sees the bots arrive and the countdown
@@ -103,6 +122,7 @@ async function ponerBots(cantidad) {
 }
 
 onBeforeUnmount(() => {
+  candado?.release?.().catch(() => {})
   document.removeEventListener('fullscreenchange', alCambiarCompleta)
   if (document.fullscreenElement) salirDeCompleta()
   dejarPartida()
@@ -138,8 +158,15 @@ async function copiarCodigo() {
 </script>
 
 <template>
-  <div class="en-linea">
-    <LienzoJuego ref="vista" :hud="hud" :debug="debug" :pantalla="pantalla" @tecla="juego?.sonido.activar()">
+  <div class="en-linea" :class="{ 'en-linea--celular': celular }">
+    <LienzoJuego
+      ref="vista"
+      :hud="hud"
+      :debug="debug"
+      :pantalla="pantalla"
+      :celular="celular"
+      @tecla="juego?.sonido.activar()"
+    >
       <AvisoPartida
         :partida="partidaActual"
         :vivo="hud.vivo"
@@ -160,8 +187,27 @@ async function copiarCodigo() {
 
       <!-- Full screen: what the side panel would show. In modo local it goes on the right (with the
            QR); playing on your own computer, on the left (your item is in the top right corner) -->
-      <template v-if="completa">
-        <button type="button" class="en-linea__salir-completa" title="Salir de pantalla completa (Esc)" @click="salirDeCompleta">
+      <!-- On the phone: the controls over the game, in your car's color -->
+      <MandoTactil v-if="conMando" :mando="mando" superpuesto :style="{ '--color': miColor }" />
+      <p v-if="celular" class="en-linea__girar">Gira tu celular para jugar</p>
+
+      <template v-if="completa || celular">
+        <button
+          v-if="celular"
+          type="button"
+          class="en-linea__salir-completa"
+          title="Salir de la sala"
+          @click="emit('salir')"
+        >
+          ✕
+        </button>
+        <button
+          v-else
+          type="button"
+          class="en-linea__salir-completa"
+          title="Salir de pantalla completa (Esc)"
+          @click="salirDeCompleta"
+        >
           ✕
         </button>
         <div
@@ -210,7 +256,7 @@ async function copiarCodigo() {
       </template>
     </LienzoJuego>
 
-    <aside class="en-linea__sala card" aria-label="Sala">
+    <aside v-if="!celular" class="en-linea__sala card" aria-label="Sala">
       <template v-if="pantalla">
         <p class="en-linea__etiqueta muted">Modo local · únete con tu celular</p>
         <img v-if="qr" :src="qr" class="en-linea__qr" width="240" height="240" alt="Código QR para unirse desde el celular" />
@@ -286,7 +332,7 @@ async function copiarCodigo() {
       <button type="button" class="btn btn--sm btn--ghost en-linea__salir" @click="emit('salir')">Salir de la sala</button>
     </aside>
 
-    <TeclasJuego v-if="!pantalla" class="en-linea__ayuda" />
+    <TeclasJuego v-if="!pantalla && !celular" class="en-linea__ayuda" />
   </div>
 </template>
 
@@ -421,6 +467,55 @@ async function copiarCodigo() {
 .en-linea__marcador-completa small {
   font-size: 0.75rem;
   opacity: 0.7;
+}
+
+/* Phone held upright: the 16:9 game would be tiny; ask to turn it */
+.en-linea__girar {
+  display: none;
+}
+
+@media (orientation: portrait) {
+  .en-linea__girar {
+    display: grid;
+    place-items: center;
+    position: fixed;
+    inset: 0;
+    z-index: 5;
+    margin: 0;
+    padding: 24px;
+    background: rgba(34, 23, 15, 0.92);
+    color: #f1e6cc;
+    font: 400 1.8rem var(--font-title);
+    text-align: center;
+  }
+}
+
+/* On the phone: smaller panels, kept clear of the joystick (bottom left) */
+.en-linea--celular .en-linea__unirse-completa,
+.en-linea--celular .en-linea__marcador-completa {
+  top: 52px;
+  left: 10px;
+  right: auto;
+  padding: 8px 10px;
+  font-size: 0.8rem;
+}
+
+.en-linea--celular .en-linea__unirse-completa .en-linea__codigo {
+  font-size: 1.4rem;
+}
+
+.en-linea--celular .en-linea__mini-jugadores {
+  margin: 2px 0 6px;
+  gap: 1px;
+}
+
+.en-linea--celular .en-linea__marcador-completa strong {
+  font-size: 1rem;
+}
+
+.en-linea--celular .en-linea__salir-completa {
+  top: 10px;
+  left: 10px;
 }
 
 .en-linea__qr {

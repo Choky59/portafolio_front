@@ -79,9 +79,10 @@ function crearNombre(nombre, color) {
  * states and a camera (compartido/camara.ts) and draws them. The camera pose comes from
  * poseCamara(), the same math the server uses to decide who's out of the picture.
  */
-export function crearEscena3D(canvas, pista, { items = [] } = {}) {
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+/** `ligero`: for phones (fewer pixels, smaller shadow map, no antialiasing); it looks the same, a bit softer */
+export function crearEscena3D(canvas, pista, { items = [], ligero = false } = {}) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: !ligero, powerPreference: 'high-performance' })
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ligero ? 1.5 : 2))
   renderer.outputColorSpace = THREE.SRGBColorSpace
   renderer.shadowMap.enabled = true
   renderer.shadowMap.type = THREE.PCFSoftShadowMap
@@ -96,7 +97,7 @@ export function crearEscena3D(canvas, pista, { items = [] } = {}) {
   escena.add(new THREE.HemisphereLight('#FFF4DC', '#B48A57', 1.5))
   const sol = new THREE.DirectionalLight('#FFE7BC', 2.2)
   sol.castShadow = true
-  sol.shadow.mapSize.set(2048, 2048)
+  sol.shadow.mapSize.set(ligero ? 1024 : 2048, ligero ? 1024 : 2048)
   // Big enough for the shared camera zoomed all the way out (ZOOM_MAX)
   Object.assign(sol.shadow.camera, { left: -140, right: 140, top: 140, bottom: -140, near: 1, far: 360 })
   sol.shadow.bias = -0.0005

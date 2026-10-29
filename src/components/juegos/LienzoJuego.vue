@@ -13,6 +13,11 @@ defineProps({
   debug: { type: Boolean, default: false },
   /** Modo local: this is the shared screen (no car of its own): no HUD, no "click to drive" */
   pantalla: { type: Boolean, default: false },
+  /**
+   * Playing on the phone: the game takes the whole screen (even where the browser can't do real
+   * full screen, like iPhone), the HUD goes up top (the controls take the bottom corners)
+   */
+  celular: { type: Boolean, default: false },
 })
 const emit = defineEmits(['tecla'])
 
@@ -30,7 +35,7 @@ defineExpose({
 
 <template>
   <!-- The frame is what goes full screen; inside, the game keeps 16:9 and every overlay stays on it -->
-  <div ref="contenedor" class="lienzo-juego-marco">
+  <div ref="contenedor" class="lienzo-juego-marco" :class="{ 'lienzo-juego-marco--celular': celular }">
   <div class="lienzo-juego">
     <canvas
       ref="lienzo"
@@ -59,7 +64,7 @@ defineExpose({
     <div v-if="hud.meteorito" class="lienzo-juego__meteorito" aria-live="polite">
       <template v-if="hud.meteorito.aviso">{{ hud.meteorito.aviso }}</template>
       <template v-else-if="hud.meteorito.recarga > 0">Otro meteorito en {{ Math.ceil(hud.meteorito.recarga) }} s</template>
-      <template v-else><b>Clic en la pista</b> para tirar un meteorito</template>
+      <template v-else><b>{{ celular ? 'Toca la pista' : 'Clic en la pista' }}</b> para tirar un meteorito</template>
     </div>
 
     <!-- The item you're carrying: use it with Shift or E -->
@@ -74,7 +79,7 @@ defineExpose({
       <span v-else class="lienzo-juego__sin-item">Agarra una caja <b>?</b></span>
     </div>
 
-    <button v-if="!enfocado && !pantalla" type="button" class="lienzo-juego__pausa" @click="lienzo.focus()">
+    <button v-if="!enfocado && !pantalla && !celular" type="button" class="lienzo-juego__pausa" @click="lienzo.focus()">
       Haz clic para manejar
     </button>
 
@@ -118,6 +123,19 @@ defineExpose({
   background: #22170f;
 }
 
+/* Playing on the phone: the same, without needing real full screen */
+.lienzo-juego-marco--celular {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  background: #22170f;
+  touch-action: none;
+  overscroll-behavior: none;
+}
+
+.lienzo-juego-marco--celular .lienzo-juego,
 .lienzo-juego-marco:fullscreen .lienzo-juego {
   width: min(100vw, calc(100vh * 16 / 9));
   border-radius: 0;
@@ -254,6 +272,42 @@ defineExpose({
   .lienzo-juego__fuera {
     animation: none;
   }
+}
+
+/* On the phone the controls take the bottom corners: just the speed up top (left, next to the ✕)
+   and the item on the right, over the Item button */
+.lienzo-juego-marco--celular .lienzo-juego__hud {
+  top: 10px;
+  bottom: auto;
+  left: 56px;
+  padding: 2px 12px;
+}
+
+.lienzo-juego-marco--celular .lienzo-juego__velocidad {
+  font-size: 1.2rem;
+}
+
+.lienzo-juego-marco--celular .lienzo-juego__hud > :not(.lienzo-juego__velocidad) {
+  display: none;
+}
+
+.lienzo-juego-marco--celular .lienzo-juego__item {
+  top: 8px;
+  right: 10px;
+  padding: 4px 10px 4px 4px;
+}
+
+.lienzo-juego-marco--celular .lienzo-juego__item img {
+  width: 36px;
+  height: 36px;
+}
+
+.lienzo-juego-marco--celular .lienzo-juego__item small {
+  display: none;
+}
+
+.lienzo-juego-marco--celular .lienzo-juego__meteorito {
+  top: 56px;
 }
 
 .lienzo-juego__meteorito {
