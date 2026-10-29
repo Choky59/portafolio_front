@@ -315,6 +315,8 @@ onBeforeUnmount(() => terminar())
   z-index: 1000;
   display: grid;
   grid-template-rows: auto 1fr;
+  /* Never wider than the phone: a long status line gets cut with "…" instead of pushing everything */
+  grid-template-columns: minmax(0, 1fr);
   background: #1c140d;
   color: #f1e6cc;
   touch-action: none;
@@ -437,11 +439,16 @@ onBeforeUnmount(() => terminar())
 
 .control__botones {
   justify-self: end;
+  align-self: stretch;
   display: grid;
-  grid-template-columns: auto auto;
-  grid-template-areas: 'item freno';
-  gap: 18px;
-  align-items: end;
+  /* One column on the right: Item on top, Frenar under it (where the thumb rests) */
+  grid-template-columns: auto;
+  grid-template-rows: 1fr auto;
+  grid-template-areas:
+    'item'
+    'freno';
+  justify-items: center;
+  gap: 10px;
 }
 
 .control__boton {
@@ -461,6 +468,7 @@ onBeforeUnmount(() => terminar())
 
 .control__boton--freno {
   grid-area: freno;
+  align-self: end;
   width: min(26vw, 40vh, 160px);
   aspect-ratio: 1;
   background: #e4572e;
@@ -468,7 +476,7 @@ onBeforeUnmount(() => terminar())
 
 .control__boton--item {
   grid-area: item;
-  align-self: start;
+  align-self: end;
   width: min(19vw, 30vh, 120px);
   aspect-ratio: 1;
   background: #f6c445;
@@ -480,20 +488,32 @@ onBeforeUnmount(() => terminar())
 
 /* Upright phone: still usable, but everything stacked and a hint to turn it */
 @media (orientation: portrait) {
+  /* The item in the middle; under it, the wheel on the left and the buttons on the right */
   .control__cuerpo {
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: 1fr auto;
+    grid-template-areas:
+      'item item'
+      'pad botones';
     align-items: end;
+    padding-bottom: 32px;
   }
 
   .control__item {
-    grid-column: 1 / -1;
+    grid-area: item;
+    align-self: center;
     justify-self: center;
     max-width: none;
   }
 
   .control__pad {
+    grid-area: pad;
     width: min(44vw, 220px);
+  }
+
+  .control__botones {
+    grid-area: botones;
+    align-self: end;
   }
 
   .control__boton--freno {
