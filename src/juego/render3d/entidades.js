@@ -33,7 +33,11 @@ function calcomania(radio, color, opacidad = 1, lados = 14, irregular = 0) {
   )
 }
 
-/** Each model: (item) → { grupo, animar?(t, vida) } */
+/**
+ * Each model: (item) → { grupo, animar?(t, vida), sobreSuelo? }. `sobreSuelo` (its size in m)
+ * marks things lying on the road (pothole, puddle, speed bump): they're tilted with the slope
+ * and lifted so no part sinks into a hill.
+ */
 const MODELOS = {
   /** Burro percherón: a stout donkey that gallops (it runs along +x) */
   burro() {
@@ -82,7 +86,7 @@ const MODELOS = {
       grieta.position.set(Math.cos(i * 1.4) * 2.2, 0.01, -Math.sin(i * 1.4) * 2.2)
       g.add(grieta)
     }
-    return { grupo: g }
+    return { grupo: g, sobreSuelo: (item.radio ?? 2) + 0.6 }
   },
 
   /** Charco de la tromba: a blue puddle with ripples */
@@ -105,6 +109,7 @@ const MODELOS = {
     }
     return {
       grupo: g,
+      sobreSuelo: r + 0.3,
       animar(t) {
         ondas.forEach((o, i) => {
           const f = (t * 0.6 + i * 0.5) % 1
@@ -172,7 +177,7 @@ const MODELOS = {
       const z = -largo / 2 + (largo / tramos) * (i + 0.5)
       en(g, new THREE.BoxGeometry(1, 0.35, largo / tramos), i % 2 ? COLORES.tinta : '#F6C445', 0, 0.18, z, { grosor: 0.03 })
     }
-    return { grupo: g }
+    return { grupo: g, sobreSuelo: largo / 2 }
   },
 
   /** Coyotas: flat golden discs with dark spots, flying flat */

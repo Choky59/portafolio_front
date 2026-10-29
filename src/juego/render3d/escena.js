@@ -53,6 +53,36 @@ export function crearEscena3D(canvas, pista, { items = [] } = {}) {
   /** What's loose on the road: entity id → { modelo, item } */
   const entidades = new Map()
 
+  const arriba = new THREE.Vector3(0, 1, 0)
+  const normal = new THREE.Vector3()
+  const inclinacion = new THREE.Quaternion()
+  const giro = new THREE.Quaternion()
+
+  /**
+   * Lays something flat on the ground (a pothole, a puddle, a speed bump), `tamano` meters
+   * around its center: tilted with the slope measured at that distance, then lifted just enough
+   * that no point around it is under the ground (hills curve, a flat piece doesn't).
+   */
+  function acostar(grupo, e, tamano) {
+    const h = altura(e.x, e.y)
+    const pendienteX = (altura(e.x + tamano, e.y) - altura(e.x - tamano, e.y)) / (2 * tamano)
+    const pendienteZ = (altura(e.x, e.y + tamano) - altura(e.x, e.y - tamano)) / (2 * tamano)
+    let hundido = 0
+    for (let i = 0; i < 12; i++) {
+      const a = (i / 12) * Math.PI * 2
+      for (const d of [tamano * 0.5, tamano]) {
+        const dx = Math.cos(a) * d
+        const dz = Math.sin(a) * d
+        hundido = Math.max(hundido, altura(e.x + dx, e.y + dz) - (h + pendienteX * dx + pendienteZ * dz))
+      }
+    }
+    normal.set(-pendienteX, 1, -pendienteZ).normalize()
+    inclinacion.setFromUnitVectors(arriba, normal)
+    giro.setFromAxisAngle(arriba, -e.angulo)
+    grupo.quaternion.copy(inclinacion).multiply(giro)
+    grupo.position.set(e.x, h + hundido + 0.06, e.y)
+  }
+
   function ajustarTamano() {
     const ancho = canvas.clientWidth
     const alto = canvas.clientHeight
@@ -111,8 +141,11 @@ export function crearEscena3D(canvas, pista, { items = [] } = {}) {
           entidades.set(e.id, actual)
           escena.add(actual.grupo)
         }
-        actual.grupo.position.set(e.x, altura(e.x, e.y), e.y)
-        actual.grupo.rotation.y = -e.angulo
+        if (actual.sobreSuelo) acostar(actual.grupo, e, actual.sobreSuelo)
+        else {
+          actual.grupo.position.set(e.x, altura(e.x, e.y), e.y)
+          actual.grupo.rotation.y = -e.angulo
+        }
         actual.animar?.(t, e.vida)
       }
       for (const [id, actual] of entidades) {

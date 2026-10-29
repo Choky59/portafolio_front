@@ -441,7 +441,7 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
 
 /** Saca a `mover` de encima de `fijo` (círculos de la caja de choque), sin tocar a `fijo` */
 function separarEnPantalla(mover, fijo) {
-  const minimo = PARAMETROS_FISICA.radio * 2
+  const minimo = PARAMETROS_FISICA.choque.radio * 2
   for (const oa of HITBOX) {
     for (const ob of HITBOX) {
       // Con la posición de este momento: los empujones anteriores ya la movieron

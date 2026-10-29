@@ -1,5 +1,5 @@
 <script setup>
-import { onBeforeUnmount, ref, shallowRef } from 'vue'
+import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
 import { COLORES, EVENTOS, LARGO_NOMBRE, MAX_JUGADORES } from '../../juego/compartido/protocolo'
 import { crearConexion } from '../../juego/red/conexion.js'
@@ -8,9 +8,14 @@ import ITEMS from '../../juego/datos/items.json'
 import JuegoEnLinea from './JuegoEnLinea.vue'
 
 /**
- * Proyecto #3's game: pick a name and a color, then create a room (and share its code)
- * or join one with a code. Name and color are remembered in this browser.
+ * Proyecto #3's game: pick a name and a color, then create a room (and share its code),
+ * join one with a code, or pick one from the list of open rooms. Name and color are
+ * remembered in this browser.
+ *
+ * The lobby keeps one connection to the game server: it asks for the open rooms every few
+ * seconds and, when you create or join one, that same connection becomes the game's.
  */
+const CADA_LISTA = 3000
 const GUARDADO = 'carreras:jugador'
 const route = useRoute()
 
@@ -39,26 +44,75 @@ function guardar() {
   }
 }
 
-/** `solo`: create a room and play right away against 2 bots */
-async function entrar(evento, { solo = false } = {}) {
-  error.value = ''
-  if (!nombre.value.trim()) return (error.value = 'Escribe tu nombre')
-  if (evento === EVENTOS.unirse && !codigo.value.trim()) return (error.value = 'Escribe el código de la sala')
-  guardar()
-  conectando.value = true
+/* ------------------------- Connection and room list ------------------------- */
+
+/** The lobby's connection (not in any room yet); null until needed or after it failed */
+let conexionLobby = null
+/** Rooms you can join, refreshed every few seconds; null until the first answer */
+const salas = ref(null)
+let reloj = null
+
+async function obtenerConexion() {
+  if (conexionLobby) return conexionLobby
   // ?lag=150&jitter=40 simulates a far-away server (ms, round trip + random variation)
   const conexion = crearConexion({ lag: Number(route.query.lag) || 0, jitter: Number(route.query.jitter) || 0 })
   try {
     await conexion.abierta()
-    const r = await conexion.pedir(evento, { nombre: nombre.value, color: color.value, codigo: codigo.value })
+  } catch (e) {
+    conexion.cerrar()
+    throw e
+  }
+  conexionLobby = conexion
+  conexion.alCerrarse(() => {
+    if (conexionLobby === conexion) conexionLobby = null
+  })
+  return conexion
+}
+
+async function refrescarSalas() {
+  if (partida.value || conectando.value || document.hidden) return
+  try {
+    const conexion = await obtenerConexion()
+    salas.value = await conexion.pedir(EVENTOS.salas)
+  } catch {
+    // The server is unreachable for now: try again on the next round
+    conexionLobby?.cerrar()
+    conexionLobby = null
+  }
+}
+
+onMounted(() => {
+  refrescarSalas()
+  reloj = setInterval(refrescarSalas, CADA_LISTA)
+})
+
+onBeforeUnmount(() => {
+  clearInterval(reloj)
+  conexionLobby?.cerrar()
+  partida.value?.conexion.cerrar()
+})
+
+/* ------------------------------ Getting in ------------------------------ */
+
+/** `solo`: create a room and play right away against 2 bots. `sala`: the code to join, from the list */
+async function entrar(evento, { solo = false, sala = codigo.value } = {}) {
+  error.value = ''
+  if (!nombre.value.trim()) return (error.value = 'Escribe tu nombre')
+  if (evento === EVENTOS.unirse && !String(sala).trim()) return (error.value = 'Escribe el código de la sala')
+  guardar()
+  conectando.value = true
+  try {
+    const conexion = await obtenerConexion()
+    const r = await conexion.pedir(evento, { nombre: nombre.value, color: color.value, codigo: sala })
     if (!r.ok) throw new Error(r.error)
+    // This connection now belongs to the game
+    conexionLobby = null
     conexion.alCerrarse(() => {
       salir()
       error.value = 'Se perdió la conexión con el servidor'
     })
     partida.value = { conexion, sala: r.sala, estado: r.partida, miId: r.id, solo }
   } catch (e) {
-    conexion.cerrar()
     error.value = e.message
   } finally {
     conectando.value = false
@@ -68,9 +122,10 @@ async function entrar(evento, { solo = false } = {}) {
 function salir() {
   partida.value?.conexion.cerrar()
   partida.value = null
+  refrescarSalas()
 }
 
-onBeforeUnmount(() => partida.value?.conexion.cerrar())
+const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En partida · entras en la siguiente ronda')
 </script>
 
 <template>
@@ -139,6 +194,33 @@ onBeforeUnmount(() => partida.value?.conexion.cerrar())
       </div>
     </div>
 
+    <section class="lobby__salas" aria-labelledby="lobby-salas">
+      <h3 id="lobby-salas">Salas abiertas</h3>
+      <p v-if="salas === null" class="muted">Buscando salas…</p>
+      <p v-else-if="!salas.length" class="muted">No hay salas abiertas ahorita. ¡Crea una y comparte el código!</p>
+      <ul v-else class="lobby__lista">
+        <li v-for="s in salas" :key="s.codigo">
+          <span class="lobby__sala-codigo">{{ s.codigo }}</span>
+          <span class="lobby__sala-info">
+            <strong>Sala de {{ s.anfitrion }}</strong>
+            <span class="muted">
+              {{ s.jugadores }}/{{ MAX_JUGADORES }} jugadores<template v-if="s.bots"> ({{ s.bots }} {{ s.bots === 1 ? 'bot' : 'bots' }})</template>
+              · {{ textoFase(s.fase) }}
+            </span>
+          </span>
+          <button
+            type="button"
+            class="btn btn--sm"
+            :disabled="conectando"
+            :aria-label="`Unirse a la sala ${s.codigo} de ${s.anfitrion}`"
+            @click="entrar(EVENTOS.unirse, { sala: s.codigo })"
+          >
+            Unirse
+          </button>
+        </li>
+      </ul>
+    </section>
+
     <p v-if="conectando" class="lobby__aviso muted" role="status">Conectando…</p>
     <p v-else-if="error" class="lobby__aviso lobby__aviso--error" role="alert">{{ error }}</p>
 
@@ -171,6 +253,56 @@ onBeforeUnmount(() => partida.value?.conexion.cerrar())
 </template>
 
 <style scoped>
+.lobby__salas h3 {
+  font-size: 1.5rem;
+  margin: 0 0 8px;
+}
+
+.lobby__salas > p {
+  margin: 0;
+}
+
+.lobby__lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.lobby__lista li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+}
+
+.lobby__sala-codigo {
+  font: 400 1.4rem var(--font-title);
+  color: var(--accent-ink);
+  white-space: nowrap;
+}
+
+.lobby__sala-info {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+}
+
+.lobby__sala-info strong,
+.lobby__sala-info .muted {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lobby__sala-info .muted {
+  font-size: 0.85rem;
+}
+
 .lobby__reglas {
   border-top: 1px solid var(--border);
   padding-top: 16px;
