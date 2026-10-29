@@ -8,10 +8,41 @@ import { CATEGORIAS } from '../compartido/protocolo'
 import { crearMundo } from './mundo.js'
 import { brush, lienzo } from '../pincel.js'
 import { COLORES } from '../render/colores.js'
+import { lienzoItem } from '../render/iconos.js'
 
 const CIELO = '#F3E2BC'
 /** Height of a name tag, as a fraction of the picture's height (it doesn't shrink with the zoom) */
 const ALTO_NOMBRE = 0.06
+/** Same for the item bubble over each car (modo local) */
+const ALTO_ITEM = 0.075
+
+/** A round bubble with the item's icon and an ink rim, pointing down at the car (cached per item) */
+const texturasItem = new Map()
+function texturaItem(item) {
+  if (texturasItem.has(item.id)) return texturasItem.get(item.id)
+  const ancho = 112
+  const alto = 128
+  const { c, g } = lienzo(ancho, alto, { offscreen: false })
+  g.fillStyle = COLORES.crema
+  g.strokeStyle = COLORES.tinta
+  g.lineWidth = 6
+  g.beginPath()
+  g.arc(ancho / 2, 54, 50, 0, Math.PI * 2)
+  g.moveTo(ancho / 2 - 12, 100)
+  g.lineTo(ancho / 2, alto - 4)
+  g.lineTo(ancho / 2 + 12, 100)
+  g.fill()
+  g.stroke()
+  g.beginPath()
+  g.arc(ancho / 2, 54, 47, 0, Math.PI * 2)
+  g.fill()
+  g.drawImage(lienzoItem(item), ancho / 2 - 40, 14, 80, 80)
+  const textura = new THREE.CanvasTexture(c)
+  textura.colorSpace = THREE.SRGBColorSpace
+  const valor = { textura, aspecto: ancho / alto }
+  texturasItem.set(item.id, valor)
+  return valor
+}
 
 /** A name tag: the name in brush letters on an ink pill, underlined with the car's color */
 function crearNombre(nombre, color) {
@@ -106,6 +137,18 @@ export function crearEscena3D(canvas, pista, { items = [] } = {}) {
   /** Name tags over the cars (id → sprite) and how visible they are (0 … 1) */
   const nombres = new Map()
   let opacidadNombres = 0
+  /** Modo local: over each car, the item it carries (id → sprite) */
+  let conItems = false
+  const marcasItem = new Map()
+  function marcaItem(id) {
+    if (marcasItem.has(id)) return marcasItem.get(id)
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ transparent: true, depthTest: false, depthWrite: false, sizeAttenuation: false }))
+    sprite.renderOrder = 12
+    sprite.visible = false
+    escena.add(sprite)
+    marcasItem.set(id, sprite)
+    return sprite
+  }
 
   // The spectator's aim: a ring on the ground where the meteor would land
   const mira = new THREE.Mesh(
@@ -221,7 +264,21 @@ export function crearEscena3D(canvas, pista, { items = [] } = {}) {
         etiqueta.material.dispose()
       }
       nombres.delete(id)
+      const marca = marcasItem.get(id)
+      if (marca) {
+        escena.remove(marca)
+        marca.material.dispose()
+      }
+      marcasItem.delete(id)
       efectos.olvidar(id)
+    },
+
+    /**
+     * Modo local: everybody looks at the same screen and nobody looks at their phone, so the item
+     * each one carries shows in a bubble over their car
+     */
+    mostrarItems(si) {
+      conItems = si
     },
 
     /** How visible the name tags over the cars are (0 hides them) */
@@ -329,6 +386,7 @@ export function crearEscena3D(canvas, pista, { items = [] } = {}) {
       ajustarTamano()
       for (const carro of carros.values()) carro.grupo.visible = false
       for (const etiqueta of nombres.values()) etiqueta.visible = false
+      for (const marca of marcasItem.values()) marca.visible = false
       // Name tags keep the same size on screen whatever the zoom: with sizeAttenuation off, a
       // sprite of scale s covers s / tan(fov / 2) of the picture's height in clip space (which is 2 tall)
       const altoNombre = 2 * ALTO_NOMBRE * Math.tan(((p.fov / 2) * Math.PI) / 180)
@@ -344,6 +402,21 @@ export function crearEscena3D(canvas, pista, { items = [] } = {}) {
           // Rises a little as it fades out
           etiqueta.position.set(estado.x, altura(estado.x, estado.y) + 3.2 + (1 - opacidadNombres) * 1.5, estado.y)
           etiqueta.scale.set(altoNombre * etiqueta.userData.aspecto, altoNombre, 1)
+        }
+        const item = conItems && estado.item >= 0 ? items[estado.item] : null
+        if (item) {
+          const marca = marcaItem(id)
+          const { textura, aspecto } = texturaItem(item)
+          if (marca.material.map !== textura) {
+            marca.material.map = textura
+            marca.material.needsUpdate = true
+          }
+          const alto = (ALTO_ITEM / ALTO_NOMBRE) * altoNombre
+          marca.scale.set(alto * aspecto, alto, 1)
+          // Above the name tag while it shows (a sprite's center is in its own size: -1 = one height up)
+          marca.center.set(0.5, -(altoNombre / alto) * opacidadNombres * 1.1)
+          marca.position.set(estado.x, altura(estado.x, estado.y) + 3.2 + (estado.z ?? 0), estado.y)
+          marca.visible = true
         }
       }
       efectos.actualizar(dt)

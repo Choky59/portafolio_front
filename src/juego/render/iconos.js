@@ -69,6 +69,13 @@ const DIBUJOS = {
 export function iconoItem(item) {
   if (!item) return null
   if (cache.has(item.id)) return cache.get(item.id)
+  const url = lienzoItem(item).toDataURL('image/png')
+  cache.set(item.id, url)
+  return url
+}
+
+/** The item's icon drawn on a new canvas (TAM × TAM), for drawing it somewhere else */
+export function lienzoItem(item) {
   const { c, g } = lienzo(TAM, TAM, { offscreen: false })
   const dibujar = DIBUJOS[item.id]
   if (dibujar) dibujar(g)
@@ -80,7 +87,5 @@ export function iconoItem(item) {
     g.fillStyle = COLORES.tinta
     g.fillText(item.nombre[0], 48, 52)
   }
-  const url = c.toDataURL('image/png')
-  cache.set(item.id, url)
-  return url
+  return c
 }

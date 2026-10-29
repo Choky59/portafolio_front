@@ -131,6 +131,8 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
   const pista = prepararPista(circuito)
   const tick = 1 / sala.tickHz
   const escena = crearEscena3D(canvas, pista, { items: ITEMS })
+  // Modo local: nobody looks at their phone, so each car shows its item over it
+  escena.mostrarItems(!!sala.local)
   const entrada = crearEntrada([crearTeclado(canvas)])
   const camaraPropia = crearCamara()
   // The click that created or joined the room counts as the gesture that unlocks audio
@@ -295,9 +297,10 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
       let otro = otros.get(id)
       if (!otro) otros.set(id, (otro = { linea: crearLineaDeTiempo(), visual: null }))
       // Un carro quieto (cuenta, pausa) manda el mismo seq: se actualiza su foto igual
-      if (!registrar(otro.linea, suSeq, { ...estado, vivo }, ahora)) {
+      // The item rides along (modo local shows it over the car)
+      if (!registrar(otro.linea, suSeq, { ...estado, vivo, item }, ahora)) {
         const ultimo = otro.linea.historial.at(-1)
-        ultimo.valor = { ...estado, vivo }
+        ultimo.valor = { ...estado, vivo, item }
       }
     }
   }
