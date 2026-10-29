@@ -17,16 +17,19 @@ defineProps({
 const emit = defineEmits(['tecla'])
 
 const lienzo = ref(null)
+const contenedor = ref(null)
 const enfocado = ref(false)
 
 defineExpose({
   lienzo,
   enfocar: () => lienzo.value?.focus(),
+  /** The game (canvas and overlays) on the whole screen; Esc gets out */
+  pantallaCompleta: () => contenedor.value?.requestFullscreen?.().catch(() => {}),
 })
 </script>
 
 <template>
-  <div class="lienzo-juego">
+  <div ref="contenedor" class="lienzo-juego">
     <canvas
       ref="lienzo"
       class="lienzo-juego__canvas"
@@ -99,6 +102,18 @@ defineExpose({
   width: 100%;
   aspect-ratio: 16 / 9;
   outline: none;
+}
+
+/* Full screen: as big as fits keeping 16:9 (everybody sees the same picture), dark bands around */
+.lienzo-juego:fullscreen {
+  display: grid;
+  place-items: center;
+  border-radius: 0;
+  background: #22170f;
+}
+
+.lienzo-juego:fullscreen .lienzo-juego__canvas {
+  width: min(100vw, calc(100vh * 16 / 9));
 }
 
 .lienzo-juego__hud {

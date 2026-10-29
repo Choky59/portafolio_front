@@ -43,6 +43,13 @@ const enPartida = computed(() => partidaActual.value.fase !== 'espera')
 const pantalla = computed(() => !!salaActual.value.local)
 const ligaControl = computed(() => `${location.origin}/control?sala=${encodeURIComponent(salaActual.value.codigo)}`)
 const qr = ref('')
+/** The game is on the whole screen (modo local): the side panel isn't visible, so a few things go over the game */
+const completa = ref(false)
+const alCambiarCompleta = () => (completa.value = !!document.fullscreenElement)
+document.addEventListener('fullscreenchange', alCambiarCompleta)
+function salirDeCompleta() {
+  document.exitFullscreen?.().catch(() => {})
+}
 watchEffect(async () => {
   if (!pantalla.value) return
   qr.value = await QRCode.toDataURL(ligaControl.value, { margin: 1, width: 240, color: { dark: '#22170F', light: '#F1E6CC' } })
@@ -90,6 +97,8 @@ async function ponerBots(cantidad) {
 }
 
 onBeforeUnmount(() => {
+  document.removeEventListener('fullscreenchange', alCambiarCompleta)
+  if (document.fullscreenElement) salirDeCompleta()
   dejarPartida()
   juego?.destruir()
 })
@@ -142,6 +151,46 @@ async function copiarCodigo() {
         @otra-vez="empezar"
         @salir="emit('salir')"
       />
+
+      <!-- Modo local in full screen: what the side panel would show -->
+      <template v-if="pantalla && completa">
+        <button type="button" class="en-linea__salir-completa" title="Salir de pantalla completa (Esc)" @click="salirDeCompleta">
+          ✕
+        </button>
+        <div v-if="partidaActual.fase === 'espera'" class="en-linea__unirse-completa">
+          <img v-if="qr" :src="qr" width="150" height="150" alt="Código QR para unirse desde el celular" />
+          <div>
+            <p class="en-linea__etiqueta">Únete con tu celular</p>
+            <p class="en-linea__codigo en-linea__codigo--fijo">{{ salaActual.codigo }}</p>
+            <ul class="en-linea__mini-jugadores">
+              <li v-for="j in salaActual.jugadores" :key="j.id">
+                <span class="en-linea__color" :style="{ background: colorCarro(j.color) }"></span>{{ j.nombre }}
+              </li>
+            </ul>
+            <div class="en-linea__botones">
+              <button type="button" class="btn btn--sm" :disabled="salaActual.jugadores.length < 2" @click="empezar">
+                Empezar partida
+              </button>
+              <button
+                type="button"
+                class="btn btn--sm btn--ghost"
+                :disabled="salaActual.jugadores.length >= MAX_JUGADORES"
+                @click="ponerBots(bots + 1)"
+              >
+                + Bot
+              </button>
+            </div>
+            <p v-if="error" class="en-linea__error" role="alert">{{ error }}</p>
+          </div>
+        </div>
+        <ul v-else class="en-linea__marcador-completa" aria-label="Puntos">
+          <li v-for="j in salaActual.jugadores" :key="j.id">
+            <span class="en-linea__color" :style="{ background: colorCarro(j.color) }"></span>
+            <span>{{ j.nombre }}</span>
+            <strong>{{ puntos[j.id] ?? 0 }}<small>/{{ partidaActual.meta }}</small></strong>
+          </li>
+        </ul>
+      </template>
     </LienzoJuego>
 
     <aside class="en-linea__sala card" aria-label="Sala">
@@ -152,6 +201,7 @@ async function copiarCodigo() {
           O abre <strong>{{ ligaControl.replace(/^https?:\/\//, '').replace(/\?.*$/, '') }}</strong> y escribe el código
         </p>
         <p class="en-linea__codigo en-linea__codigo--fijo">{{ salaActual.codigo }}</p>
+        <button type="button" class="btn btn--sm" @click="vista?.pantallaCompleta()">Pantalla completa</button>
       </template>
       <template v-else>
         <p class="en-linea__etiqueta muted">Código de la sala</p>
@@ -258,6 +308,88 @@ async function copiarCodigo() {
   font: 400 2.4rem var(--font-title);
   letter-spacing: 0.04em;
   cursor: copy;
+}
+
+.en-linea__salir-completa {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(34, 23, 15, 0.7);
+  color: #f1e6cc;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.en-linea__unirse-completa {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: 16px;
+  background: rgba(241, 230, 204, 0.94);
+  color: #22170f;
+  max-width: calc(100% - 32px);
+}
+
+.en-linea__unirse-completa img {
+  border-radius: 8px;
+  border: 3px solid #22170f;
+}
+
+.en-linea__unirse-completa .en-linea__codigo {
+  font-size: 2rem;
+}
+
+.en-linea__mini-jugadores {
+  list-style: none;
+  margin: 6px 0 10px;
+  padding: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.en-linea__mini-jugadores li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.en-linea__marcador-completa {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  list-style: none;
+  margin: 0;
+  padding: 8px 12px;
+  display: grid;
+  gap: 4px;
+  border-radius: 12px;
+  background: rgba(34, 23, 15, 0.72);
+  color: #f1e6cc;
+}
+
+.en-linea__marcador-completa li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.en-linea__marcador-completa strong {
+  margin-left: auto;
+  padding-left: 12px;
+  font: 400 1.3rem var(--font-title);
+}
+
+.en-linea__marcador-completa small {
+  font-size: 0.75rem;
+  opacity: 0.7;
 }
 
 .en-linea__qr {

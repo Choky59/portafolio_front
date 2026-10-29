@@ -230,8 +230,8 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
       <div class="lobby__opcion">
         <h3>Modo local</h3>
         <p class="muted">
-          Todos ven esta pantalla y cada quien maneja con su celular: escanean el QR, ponen su nombre y listo. Hasta
-          {{ MAX_JUGADORES }} jugadores.
+          Todos ven esta pantalla y cada quien maneja con su celular: escanean el QR, ponen su nombre y listo. El carro
+          avanza solo; en el celular solo giras, frenas y usas el item. Hasta {{ MAX_JUGADORES }} jugadores.
         </p>
         <button type="button" class="btn btn--ghost" :disabled="conectando" @click="crearPantalla">
           Usar celulares como control

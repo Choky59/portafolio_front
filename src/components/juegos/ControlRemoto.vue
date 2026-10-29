@@ -11,7 +11,8 @@ import ITEMS from '../../juego/datos/items.json'
  * Proyecto #3, modo local: the phone as a game controller. Everyone looks at the same screen (a
  * computer that created the room in "modo local"); here you type your name, join with the room
  * code (it comes in the QR's link) and the phone turns into the controller: a joystick to steer
- * on the left, and Avanzar, Reversa and Item on the right.
+ * on the left, and Frenar and Item on the right. The car goes on its own (always on the gas)
+ * unless you brake: with one thumb on the wheel, there's only one button left to think about.
  *
  * The phone is a regular player for the server: it sends one control per tick, numbered, like
  * the keyboard does in the browser game. It draws nothing of the race; it only reads its own
@@ -56,7 +57,6 @@ const estado = computed(() => {
 /* ------------------------------- Controls ------------------------------- */
 
 const giro = ref(0)
-const acel = ref(false)
 const freno = ref(false)
 let itemPendiente = false
 const itemApretado = ref(false)
@@ -70,7 +70,8 @@ function enviar() {
   juego.value.conexion.emitir(EVENTOS.controles, {
     seq,
     giro: giro.value,
-    acel: acel.value ? 1 : 0,
+    // Always on the gas, except while braking (stopped, braking backs up)
+    acel: freno.value ? 0 : 1,
     freno: freno.value ? 1 : 0,
     mano: false,
     item: itemApretado.value || itemPendiente,
@@ -125,7 +126,6 @@ function boton(cual) {
   return {
     onPointerdown(e) {
       capturar(e.currentTarget, e)
-      if (cual === 'acel') acel.value = true
       if (cual === 'freno') freno.value = true
       if (cual === 'item') {
         itemApretado.value = true
@@ -139,7 +139,6 @@ function boton(cual) {
 }
 
 function soltar(cual) {
-  if (cual === 'acel') acel.value = false
   if (cual === 'freno') freno.value = false
   if (cual === 'item') itemApretado.value = false
 }
@@ -269,10 +268,7 @@ onBeforeUnmount(() => terminar())
           Item
         </button>
         <button type="button" class="control__boton control__boton--freno" :class="{ activo: freno }" v-bind="boton('freno')">
-          Reversa
-        </button>
-        <button type="button" class="control__boton control__boton--acel" :class="{ activo: acel }" v-bind="boton('acel')">
-          Avanzar
+          Frenar
         </button>
       </div>
     </div>
@@ -443,10 +439,8 @@ onBeforeUnmount(() => terminar())
   justify-self: end;
   display: grid;
   grid-template-columns: auto auto;
-  grid-template-areas:
-    '. item'
-    'freno acel';
-  gap: 14px;
+  grid-template-areas: 'item freno';
+  gap: 18px;
   align-items: end;
 }
 
@@ -465,24 +459,17 @@ onBeforeUnmount(() => terminar())
   filter: brightness(1.15);
 }
 
-.control__boton--acel {
-  grid-area: acel;
-  width: min(24vw, 36vh, 150px);
-  aspect-ratio: 1;
-  background: #5faf8c;
-}
-
 .control__boton--freno {
   grid-area: freno;
-  width: min(17vw, 26vh, 110px);
+  width: min(26vw, 40vh, 160px);
   aspect-ratio: 1;
   background: #e4572e;
 }
 
 .control__boton--item {
   grid-area: item;
-  justify-self: center;
-  width: min(17vw, 26vh, 110px);
+  align-self: start;
+  width: min(19vw, 30vh, 120px);
   aspect-ratio: 1;
   background: #f6c445;
 }
@@ -509,13 +496,12 @@ onBeforeUnmount(() => terminar())
     width: min(44vw, 220px);
   }
 
-  .control__boton--acel {
+  .control__boton--freno {
     width: min(26vw, 130px);
   }
 
-  .control__boton--freno,
   .control__boton--item {
-    width: min(19vw, 96px);
+    width: min(20vw, 100px);
   }
 
   .control__girar {
