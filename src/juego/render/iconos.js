@@ -49,6 +49,14 @@ const DIBUJOS = {
       blob(g, x + 4, y - 2, 3, { relleno: '#7A4A1E', contorno: null, seed: x })
     }
   },
+  /** Poste de luz: the pole, its crossarm and a lit lamp */
+  poste(g) {
+    fillShape(g, [[44, 90], [52, 90], [50, 12], [46, 12]], { relleno: '#B8B0A2', anchoContorno: 3, seed: 30 })
+    fillShape(g, rectangulo(48, 20, 50, 7), { relleno: '#8A6A45', anchoContorno: 2.5, seed: 31 })
+    for (const x of [28, 48, 68]) blob(g, x, 14, 4, { relleno: '#6FA3C8', anchoContorno: 2, seed: x })
+    brush(g, [[50, 36], [74, 36]], { ancho: 4, seed: 32 })
+    fillShape(g, rectangulo(76, 40, 14, 7), { relleno: '#F6C445', anchoContorno: 2.5, seed: 33 })
+  },
   camion(g) {
     fillShape(g, rectangulo(48, 50, 80, 38), { relleno: '#F1E6CC', anchoContorno: 3, seed: 15 })
     fillShape(g, rectangulo(48, 58, 80, 8), { relleno: '#E4572E', contorno: null, seed: 16 })

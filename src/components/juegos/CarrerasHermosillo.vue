@@ -16,6 +16,8 @@ import JuegoEnLinea from './JuegoEnLinea.vue'
  * seconds and, when you create or join one, that same connection becomes the game's.
  */
 const CADA_LISTA = 3000
+/** The items that come out of boxes (the grill, for example, only appears from the smoke) */
+const ITEMS_CAJAS = ITEMS.filter((i) => i.probabilidad > 0)
 const GUARDADO = 'carreras:jugador'
 const route = useRoute()
 
@@ -238,9 +240,9 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
     </div>
 
     <details class="lobby__items">
-      <summary>Los {{ ITEMS.length }} items de Hermosillo</summary>
+      <summary>Los {{ ITEMS_CAJAS.length }} items de Hermosillo</summary>
       <ul>
-        <li v-for="item in ITEMS" :key="item.id">
+        <li v-for="item in ITEMS_CAJAS" :key="item.id">
           <img :src="iconoItem(item)" alt="" width="44" height="44" loading="lazy" />
           <span>
             <strong>{{ item.nombre }}</strong>

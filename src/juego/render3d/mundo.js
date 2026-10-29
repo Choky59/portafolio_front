@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import { rng } from '../../three/piezas.js'
-import { alturaEn, puntosMuro } from '../compartido/pista'
+import { NIVEL_AGUA, alturaEn, puntosMuro } from '../compartido/pista'
 import { COLORES } from '../render/colores.js'
 import { crearTexturaSuelo } from '../render/mapa.js'
 import { DECORACION } from './decoracion.js'
@@ -31,10 +31,12 @@ export function crearMundo(pista, renderer) {
     if (!muro.oculto) mundo.add(crearMuro(muro, i, altura))
   })
   mundo.add(crearCerca(limites, altura))
+  for (const agua of circuito.agua ?? []) mundo.add(crearAgua(agua))
   circuito.decoracion.forEach((d, i) => {
     const crear = DECORACION[d.tipo] ?? DECORACION.desconocido
     const objeto = crear(d.escala ?? 1, rng((i + 1) * 7))
-    objeto.position.set(d.x, altura(d.x, d.y), d.y)
+    // Boats float on the water's surface; everything else stands on the ground
+    objeto.position.set(d.x, d.flota ? NIVEL_AGUA : altura(d.x, d.y), d.y)
     objeto.rotation.y = d.rotacion ?? (DECORACION_ORIENTADA.has(d.tipo) ? 0 : rng(i + 3)() * Math.PI * 2)
     mundo.add(objeto)
   })
@@ -42,7 +44,7 @@ export function crearMundo(pista, renderer) {
 }
 
 /** Props whose front matters keep rotation 0 unless the JSON says otherwise */
-const DECORACION_ORIENTADA = new Set(['catedral', 'kiosco', 'mirador', 'camion', 'puesto-dogos', 'senal'])
+const DECORACION_ORIENTADA = new Set(['catedral', 'kiosco', 'mirador', 'camion', 'puesto-dogos', 'senal', 'velero', 'lancha'])
 
 /** The brush-drawn ground as a texture on a mesh the size of the world, lifted by the hills */
 function crearSuelo(limites, pista, renderer, altura) {
@@ -73,6 +75,22 @@ function crearSuelo(limites, pista, renderer, altura) {
   suelo.position.set(cx, 0, cz)
   suelo.receiveShadow = true
   return suelo
+}
+
+/**
+ * The water's surface: a translucent plane at sea level over the water polygon. The ground
+ * under it sinks from the shore (alturaEn), and its brush-painted blue shows through as depth.
+ */
+function crearAgua(poligono) {
+  const forma = new THREE.Shape(poligono.map(([x, y]) => new THREE.Vector2(x, y)))
+  // Shape lives in x-y: rotated, (x, y) lands on (x, z)
+  const geo = new THREE.ShapeGeometry(forma).rotateX(Math.PI / 2).translate(0, NIVEL_AGUA, 0)
+  const agua = new THREE.Mesh(
+    geo,
+    new THREE.MeshLambertMaterial({ color: '#5AA2CC', transparent: true, opacity: 0.55, side: THREE.DoubleSide }),
+  )
+  agua.receiveShadow = true
+  return agua
 }
 
 /** Plain sand from the fence to the horizon */

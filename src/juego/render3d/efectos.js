@@ -126,6 +126,25 @@ export function crearEfectos3D(escena, altura = () => 0) {
       }
     },
 
+    /** Into the sea: a splash of foam and water, no fire and no scorch mark */
+    chapuzon(x, z) {
+      for (let k = 0; k < 30; k++) {
+        const a = Math.random() * Math.PI * 2
+        const v = 1.5 + Math.random() * 5
+        emitir({
+          x,
+          z,
+          y: 0.2,
+          vx: Math.cos(a) * v,
+          vy: 4 + Math.random() * 9,
+          vz: Math.sin(a) * v,
+          tono: ['#F4F1E8', '#BFE0F2', '#7FB8DA'][k % 3],
+          tamano: 0.5 + Math.random() * 1.1,
+          vida: 0.6 + Math.random() * 0.6,
+        })
+      }
+    },
+
     /** Boom: fire and ink puffs, flying debris and a scorch mark left on the ground */
     explosion(x, z) {
       const h = altura(x, z)

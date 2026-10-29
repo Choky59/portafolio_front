@@ -55,6 +55,7 @@ const CANAL_DE = {
   tope: 'items',
   coyotas: 'items',
   claxon: 'items',
+  poste: 'items',
   cambio: 'motor',
   eliminado: 'avisos',
   cuenta: 'avisos',
@@ -394,6 +395,12 @@ export function crearSonido() {
       }
       soplo(s, { inicio: 0.1, duracion: 1.2, volumen: 0.2, desde: 300, hasta: 1800, tipo: 'bandpass' })
     },
+    /** Poste de luz: a heavy thud as it's planted, and a metallic ring */
+    poste(s) {
+      tono(s, 65, { tipo: 'sine', duracion: 0.35, volumen: 0.45, hasta: 35 })
+      tono(s, 880, { tipo: 'triangle', inicio: 0.02, duracion: 0.6, volumen: 0.06, hasta: 840 })
+      soplo(s, { duracion: 0.2, volumen: 0.2, desde: 1200, hasta: 300 })
+    },
     cambio(s) {
       soplo(s, { duracion: 0.06, volumen: 0.05, desde: 2000, hasta: 800, tipo: 'bandpass', q: 4 })
     },
@@ -546,4 +553,5 @@ export const SONIDO_USAR = {
   tope: 'tope',
   coyotas: 'coyotas',
   camion: 'claxon',
+  poste: 'poste',
 }

@@ -1,4 +1,4 @@
-import { blob, brush, fillShape, hatch, lienzo, rng, trazar } from '../pincel.js'
+import { blob, brush, fillShape, hatch, lienzo, rectangulo, rng, trazar } from '../pincel.js'
 import { alturaEn, puntoEnPista } from '../compartido/pista'
 import { COLORES } from './colores.js'
 
@@ -19,6 +19,7 @@ export function crearTexturaSuelo(pista, { escala = 8 } = {}) {
   dibujarBarrancos(g, pista.circuito)
   dibujarCamino(g, pista)
   dibujarZonas(g, pista)
+  dibujarAgua(g, pista.circuito)
   dibujarMeta(g, pista)
   return c
 }
@@ -188,7 +189,73 @@ function dibujarZonas(g, pista) {
   })
 }
 
+/**
+ * Sea and marinas, under the 3D water surface: deep blue, brush-stroke wavelets and a foam line
+ * along the shore. Seen through the translucent water plane, so it reads as depth.
+ */
+function dibujarAgua(g, circuito) {
+  ;(circuito.agua ?? []).forEach((agua, i) => {
+    const random = rng(70 + i)
+    fillShape(g, agua, { relleno: '#3F86B3', contorno: null, paso: 3, temblor: 0.8, seed: 70 + i })
+    g.save()
+    g.beginPath()
+    trazar(g, agua, true)
+    g.clip()
+    const xs = agua.map((p) => p[0])
+    const ys = agua.map((p) => p[1])
+    const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)]
+    // Wavelets: short, slightly curved strokes in two lighter blues
+    for (let k = 0; k < ((x1 - x0) * (y1 - y0)) / 40; k++) {
+      const x = x0 + random() * (x1 - x0)
+      const y = y0 + random() * (y1 - y0)
+      const largo = 1.5 + random() * 3
+      brush(g, [[x, y], [x + largo * 0.5, y - 0.4], [x + largo, y]], {
+        color: random() < 0.5 ? '#7FB8DA' : '#A9D3EA',
+        ancho: 0.25,
+        temblor: 0.1,
+        pasadas: 1,
+        alpha: 0.7,
+        seed: k + 1,
+      })
+    }
+    g.restore()
+    // Foam along the shore
+    brush(g, [...agua, agua[0]], { color: '#F4F1E8', ancho: 1.6, paso: 2, temblor: 0.6, alpha: 0.85, seed: 80 + i })
+    brush(g, [...agua, agua[0]], { color: '#BFE0F2', ancho: 0.6, paso: 2, temblor: 0.4, alpha: 0.8, seed: 90 + i })
+  })
+}
+
 const ESTILOS_ZONA = {
+  /** San Carlos beach: pale sand with shells and the odd towel */
+  playa(g, zona, seed) {
+    const random = rng(seed)
+    fillShape(g, zona.poligono, { relleno: '#EAD5A3', contorno: null, paso: 3, temblor: 0.6, seed })
+    g.save()
+    g.beginPath()
+    trazar(g, zona.poligono, true)
+    g.clip()
+    const xs = zona.poligono.map((p) => p[0])
+    const ys = zona.poligono.map((p) => p[1])
+    for (let k = 0; k < 500; k++) {
+      const x = Math.min(...xs) + random() * (Math.max(...xs) - Math.min(...xs))
+      const y = Math.min(...ys) + random() * (Math.max(...ys) - Math.min(...ys))
+      g.fillStyle = random() < 0.7 ? 'rgba(160,120,70,0.35)' : '#F7EEDC'
+      g.fillRect(x, y, 0.35, 0.35)
+    }
+    // Towels in bright colors
+    for (let k = 0; k < 14; k++) {
+      const x = Math.min(...xs) + random() * (Math.max(...xs) - Math.min(...xs))
+      const y = Math.min(...ys) + 4 + random() * (Math.max(...ys) - Math.min(...ys) - 8)
+      fillShape(g, rectangulo(x, y, 1.8, 0.9, random()), {
+        relleno: ['#E4572E', '#4F8FE8', '#F6C445', '#7FB7A4', '#F07FB0'][k % 5],
+        anchoContorno: 0.08,
+        temblor: 0.03,
+        seed: k + 3,
+      })
+    }
+    g.restore()
+  },
+
   tierra(g, zona, seed) {
     fillShape(g, zona.poligono, {
       relleno: COLORES.tierra,

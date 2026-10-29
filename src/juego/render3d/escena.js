@@ -114,8 +114,10 @@ export function crearEscena3D(canvas, pista, { items = [] } = {}) {
       efectos.registrar(id, estado)
     },
 
-    explotar(x, y) {
-      efectos.explosion(x, y)
+    /** A car is out of the round: explosion, or a splash if it went into the water */
+    explotar(x, y, motivo) {
+      if (motivo === 'agua') efectos.chapuzon(x, y)
+      else efectos.explosion(x, y)
     },
 
     impacto(x, y, color) {

@@ -170,6 +170,56 @@ export const DECORACION = {
     return g
   },
 
+  /* ------------------------------ San Carlos ------------------------------ */
+
+  /** Palapa: a thatched palm-leaf umbrella on a wooden pole */
+  palapa(escala) {
+    const g = new THREE.Group()
+    en(g, new THREE.CylinderGeometry(0.15, 0.18, 3, 6), '#8A6A45', 0, 1.5, 0, { grosor: 0.03 })
+    en(g, new THREE.ConeGeometry(2.6, 1.5, 10), '#D9B36B', 0, 3.4, 0, { grosor: 0.08 })
+    en(g, new THREE.CylinderGeometry(2.62, 2.5, 0.25, 10), '#B8914F', 0, 2.68, 0, { grosor: 0.04 }) // fringe
+    g.scale.setScalar(escala)
+    return g
+  },
+
+  /** Beach umbrella in a bright color */
+  sombrilla(escala, random) {
+    const g = new THREE.Group()
+    const colores = ['#E4572E', '#4F8FE8', '#F6C445', '#7FB7A4', '#F07FB0']
+    en(g, new THREE.CylinderGeometry(0.05, 0.05, 2.4, 5), BLANCO, 0, 1.2, 0, { grosor: 0.02 })
+    en(g, new THREE.ConeGeometry(1.6, 0.6, 8), colores[Math.floor(random() * colores.length)], 0, 2.5, 0, { grosor: 0.05 })
+    en(g, new THREE.ConeGeometry(0.5, 0.25, 8), BLANCO, 0, 2.86, 0, { grosor: 0.03 })
+    g.scale.setScalar(escala)
+    return g
+  },
+
+  /** Sailboat: white hull with a blue stripe, a mast and its sail (long along +x) */
+  velero(escala) {
+    const g = new THREE.Group()
+    en(g, new THREE.BoxGeometry(6, 1, 2).translate(0, 0.3, 0), BLANCO, 0, 0, 0, { grosor: 0.06 })
+    en(g, new THREE.ConeGeometry(1, 1.6, 4).rotateZ(-Math.PI / 2).rotateX(Math.PI / 4).scale(1, 0.62, 1), BLANCO, 3.7, 0.3, 0, {
+      grosor: 0.05,
+    }) // bow
+    en(g, new THREE.BoxGeometry(6.02, 0.2, 2.02), '#4F8FE8', 0, 0.55, 0, { grosor: 0.02, sombra: false })
+    en(g, new THREE.CylinderGeometry(0.08, 0.1, 8, 6), '#8A6A45', 0.4, 4.8, 0, { grosor: 0.02 })
+    const vela = new THREE.Shape([new THREE.Vector2(0, 0), new THREE.Vector2(0, 7), new THREE.Vector2(-3, 0)])
+    const lona = en(g, new THREE.ShapeGeometry(vela), '#F7F2E6', 0.3, 1.2, 0, { grosor: 0.04 })
+    lona.material.side = THREE.DoubleSide
+    g.scale.setScalar(escala)
+    return g
+  },
+
+  /** Panga: a small fishing launch with an outboard motor */
+  lancha(escala, random) {
+    const g = new THREE.Group()
+    const colores = ['#E4572E', '#7FB7A4', '#F6C445', '#4F8FE8']
+    en(g, new THREE.BoxGeometry(5, 0.7, 1.7).translate(0, 0.2, 0), colores[Math.floor(random() * colores.length)], 0, 0, 0, { grosor: 0.05 })
+    en(g, new THREE.BoxGeometry(4.6, 0.12, 1.4), BLANCO, 0, 0.58, 0, { grosor: 0.02, sombra: false })
+    en(g, new THREE.BoxGeometry(0.5, 0.8, 0.4), COLORES.tinta, -2.6, 0.6, 0, { grosor: 0.03 }) // outboard
+    g.scale.setScalar(escala)
+    return g
+  },
+
   /** Fallback for a tipo nobody has modeled yet: a magenta box, so it shows up while building */
   desconocido(escala) {
     const g = new THREE.Group()

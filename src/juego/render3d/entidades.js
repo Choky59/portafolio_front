@@ -189,10 +189,66 @@ const MODELOS = {
     }
     return { grupo: g }
   },
+
+  /** Poste de luz: a concrete pole with its crossarm, insulators, wires stub and a street lamp */
+  poste(item) {
+    const g = new THREE.Group()
+    const r = item.radio ?? 0.45
+    const gris = '#B8B0A2'
+    en(g, new THREE.CylinderGeometry(r * 0.55, r, 9, 8), gris, 0, 4.5, 0, { grosor: 0.05 })
+    en(g, new THREE.BoxGeometry(0.22, 0.22, 3.2), '#8A6A45', 0, 8.2, 0, { grosor: 0.04 }) // crossarm
+    for (const z of [-1.3, 0, 1.3]) {
+      en(g, new THREE.CylinderGeometry(0.08, 0.12, 0.35, 6), '#6FA3C8', 0, 8.5, z, { grosor: 0.02, sombra: false }) // insulators
+    }
+    // Lamp arm toward the road and its yellow light
+    en(g, new THREE.BoxGeometry(2, 0.12, 0.12), gris, 1, 7.2, 0, { grosor: 0.03 })
+    en(g, new THREE.BoxGeometry(0.7, 0.2, 0.4), COLORES.tinta, 2, 7.1, 0, { grosor: 0.03 })
+    en(g, new THREE.BoxGeometry(0.5, 0.06, 0.3), '#F6E7B0', 2, 6.98, 0, { grosor: 0.01, sombra: false })
+    // Base with a couple of cracks: it was planted in a hurry
+    g.add(calcomania(r + 0.6, '#7A6C5C', 1, 9, 0.3))
+    return { grupo: g }
+  },
+
+  /** Asador: a small charcoal grill on legs, with glowing coals and a puff of smoke */
+  asador(item) {
+    const g = new THREE.Group()
+    const r = item.radio ?? 0.8
+    for (let i = 0; i < 3; i++) {
+      const a = (i / 3) * Math.PI * 2
+      const pata = en(g, new THREE.CylinderGeometry(0.05, 0.05, 0.9, 5), COLORES.tinta, Math.cos(a) * r * 0.6, 0.45, Math.sin(a) * r * 0.6, {
+        grosor: 0.02,
+      })
+      pata.rotation.set(Math.sin(a) * 0.15, 0, -Math.cos(a) * 0.15)
+    }
+    en(g, new THREE.SphereGeometry(r, 12, 6, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), '#2E2016', 0, 1.05, 0, { grosor: 0.05 }) // bowl
+    en(g, new THREE.CylinderGeometry(r * 0.92, r * 0.92, 0.05, 12), '#E4572E', 0, 1.02, 0, { grosor: 0.02, sombra: false }) // coals
+    en(g, new THREE.BoxGeometry(r * 1.4, 0.04, r * 1.4), '#5C4834', 0, 1.08, 0, { grosor: 0.01, sombra: false }) // grill
+    en(g, new THREE.BoxGeometry(0.5, 0.08, 0.25), '#9E2A14', 0.1, 1.14, 0.1, { grosor: 0.02, sombra: false }) // the carne asada
+    const humo = en(g, new THREE.IcosahedronGeometry(0.45, 1), '#E8E2D4', 0, 1.8, 0, { grosor: 0.02, sombra: false })
+    return {
+      grupo: g,
+      animar(t) {
+        // A thin, lazy plume that keeps rising and starting over
+        const f = (t * 0.5) % 1
+        humo.position.y = 1.4 + f * 2.2
+        humo.scale.setScalar(0.6 + f * 1.2)
+        humo.visible = f < 0.9
+      },
+    }
+  },
 }
 
 /** Fallbacks by mecánica, for items without their own model */
-const POR_MECANICA = { misil: 'burro', mina: 'bache', mancha: 'charco', cono: 'calor', nube: 'humo', obstaculo: 'tope', abanico: 'coyotas' }
+const POR_MECANICA = {
+  misil: 'burro',
+  mina: 'bache',
+  mancha: 'charco',
+  cono: 'calor',
+  nube: 'humo',
+  obstaculo: 'tope',
+  abanico: 'coyotas',
+  estorbo: 'poste',
+}
 
 export function crearModeloEntidad(item) {
   const crear = MODELOS[item.id] ?? MODELOS[POR_MECANICA[item.mecanica]]

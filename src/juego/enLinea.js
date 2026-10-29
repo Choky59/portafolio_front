@@ -1,5 +1,5 @@
 import { alturaEn, prepararPista } from './compartido/pista'
-import { HITBOX, PARAMETROS_FISICA, avanzarCarro, copiarCarro, rapidez } from './compartido/fisica'
+import { HITBOX, PARAMETROS_FISICA, avanzarCarro, colisionFija, copiarCarro, rapidez } from './compartido/fisica'
 import { PARAMETROS_CAMARA, PARAMETROS_CAMARA_PARTIDA, crearCamara, enVista, seguir } from './compartido/camara'
 import { EVENTOS, FASES, FASES_CON_MANEJO, desempacarCarro } from './compartido/protocolo'
 import { crearEntrada, crearTeclado } from './entrada/teclado.js'
@@ -174,6 +174,18 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
   /** Para el sonido: el último control (acelerador del motor) */
   let ultimoCtrl = { acel: 0 }
 
+  /**
+   * Postes y asadores (lo sólido y fijo en el piso), de la última instantánea. Como no se mueven,
+   * el carro propio choca contra ellos en la predicción igual que en el servidor, en el mismo
+   * orden (justo después de avanzar): pegarle a un poste no produce correcciones.
+   */
+  let estorbos = []
+  function contraEstorbos(carro) {
+    let golpe = 0
+    for (const e of estorbos) golpe = Math.max(golpe, colisionFija(carro, e.x, e.y, e.radio, PARAMETROS_FISICA))
+    return golpe
+  }
+
   function pasoLocal() {
     const ctrl = entrada.leer()
     ultimoCtrl = ctrl
@@ -185,7 +197,7 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
     for (const [id, otro] of otros) if (otro.visual?.vivo) escena.registrarEfectos(id, otro.visual)
     if (!predicho || !puedoManejar()) return
     anterior = copiarCarro(predicho)
-    const contraMuro = avanzarCarro(predicho, ctrl, PARAMETROS_FISICA, pista, tick)
+    const contraMuro = Math.max(avanzarCarro(predicho, ctrl, PARAMETROS_FISICA, pista, tick), contraEstorbos(predicho))
     if (contraMuro > 5) sonido.efecto('muro', predicho, Math.min(1, contraMuro / 25))
     escena.registrarEfectos(miId, predicho)
   }
@@ -195,7 +207,12 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
 
     // Estado del servidor + los controles que todavía no conoce (si es que el carro se mueve)
     const nuevo = copiarCarro(servidor)
-    if (puedoManejar()) for (const p of pendientes) avanzarCarro(nuevo, p.ctrl, PARAMETROS_FISICA, pista, tick)
+    if (puedoManejar()) {
+      for (const p of pendientes) {
+        avanzarCarro(nuevo, p.ctrl, PARAMETROS_FISICA, pista, tick)
+        contraEstorbos(nuevo)
+      }
+    }
 
     if (!predicho) {
       predicho = nuevo
@@ -243,6 +260,9 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
       ? { x: inst.cam[0], y: inst.cam[1], h: inst.cam[2], rumbo: inst.cam[3], zoom: inst.cam[4] ?? 1, iniciada: true }
       : null
     const entidades = inst.e.map(([id, item, x, y, angulo, vida]) => ({ id, item, x, y, angulo, vida }))
+    estorbos = entidades
+      .filter((e) => ITEMS[e.item]?.mecanica === 'estorbo')
+      .map((e) => ({ x: e.x, y: e.y, radio: ITEMS[e.item].radio ?? 0.5 }))
     registrar(mundo, inst.k, { cam, entidades }, ahora)
     escena.ponerCajas(new Set(inst.ci))
     for (const r of inst.c) {
@@ -266,8 +286,8 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
   function recibirEvento(evento) {
     switch (evento.tipo) {
       case 'explosion':
-        escena.explotar(evento.x, evento.y)
-        sonido.efecto('explosion', evento)
+        escena.explotar(evento.x, evento.y, evento.motivo)
+        sonido.efecto(evento.motivo === 'agua' ? 'salpicada' : 'explosion', evento)
         if (evento.id === miId) sonido.efecto('eliminado')
         break
       case 'golpe':
