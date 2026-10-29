@@ -1,10 +1,11 @@
 <script setup>
-import { onBeforeUnmount, onMounted, reactive, ref, toRaw } from 'vue'
+import { onBeforeUnmount, onMounted, reactive, ref, shallowRef, toRaw } from 'vue'
 import { useRoute } from 'vue-router'
 import { PARAMETROS_FISICA } from '../../juego/compartido/fisica'
 import { crearJuegoLocal } from '../../juego/local.js'
 import LienzoJuego from './LienzoJuego.vue'
 import PanelFisica from './PanelFisica.vue'
+import PanelSonido from './PanelSonido.vue'
 import TeclasJuego from './TeclasJuego.vue'
 
 /** Phase 1 bench: one car on the test circuit, no server, with the physics panel beside it */
@@ -27,6 +28,7 @@ const params = reactive(structuredClone(PARAMETROS_FISICA))
 const vista = ref(null)
 const hud = ref({ kmh: 0, suelo: 'asfalto', derrape: 0 })
 let juego = null
+const sonido = shallowRef(null)
 
 onMounted(() => {
   // The game reads the raw object every tick; the panel writes through the reactive proxy
@@ -36,12 +38,15 @@ onMounted(() => {
     params: toRaw(params),
     alEstado: (e) => (hud.value = e),
   })
+  sonido.value = juego.sonido
   if (props.enfocarAlInicio) vista.value.enfocar()
 })
 
 onBeforeUnmount(() => juego?.destruir())
 
 function tecla(e) {
+  // Browsers only start audio after a gesture: the first key does it
+  juego?.sonido.activar()
   if (e.code !== 'KeyR') return
   juego?.reiniciar()
 }
@@ -50,7 +55,13 @@ function tecla(e) {
 <template>
   <div class="manejo">
     <LienzoJuego ref="vista" :hud="hud" @tecla="tecla" />
-    <PanelFisica :params="params" :iniciales="iniciales" />
+    <div class="manejo__paneles">
+      <PanelFisica :params="params" :iniciales="iniciales" />
+      <div class="manejo__sonido card">
+        <h2 class="manejo__titulo">Sonido</h2>
+        <PanelSonido :sonido="sonido" @listo="vista?.enfocar()" />
+      </div>
+    </div>
     <TeclasJuego class="manejo__ayuda" reiniciar />
   </div>
 </template>
@@ -59,6 +70,21 @@ function tecla(e) {
 .manejo {
   display: grid;
   gap: 16px;
+}
+
+.manejo__paneles {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+
+.manejo__sonido {
+  padding: 16px;
+}
+
+.manejo__titulo {
+  font-size: 1.6rem;
+  margin: 0 0 8px;
 }
 
 @media (min-width: 960px) {

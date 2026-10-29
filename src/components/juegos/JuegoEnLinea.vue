@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { crearJuegoEnLinea } from '../../juego/enLinea.js'
 import { EVENTOS, MAX_JUGADORES } from '../../juego/compartido/protocolo'
 import { colorCarro } from '../../juego/render/colores.js'
 import AvisoPartida from './AvisoPartida.vue'
 import LienzoJuego from './LienzoJuego.vue'
+import PanelSonido from './PanelSonido.vue'
 import ResultadosPartida from './ResultadosPartida.vue'
 import TeclasJuego from './TeclasJuego.vue'
 
@@ -27,6 +28,8 @@ const partidaActual = ref(props.partida)
 const copiado = ref(false)
 const error = ref('')
 let juego = null
+/** The game's sound, for the settings panel (set once the game is running) */
+const sonido = shallowRef(null)
 
 const esAnfitrion = computed(() => salaActual.value.anfitrion === props.miId)
 /** id → { nombre, color } for the overlays */
@@ -37,6 +40,10 @@ const puntos = computed(() => Object.fromEntries(partidaActual.value.puntos.map(
 const enPartida = computed(() => partidaActual.value.fase !== 'espera')
 
 const dejarPartida = props.conexion.escuchar(EVENTOS.partida, (p) => {
+  // End of the match: fanfare if I won, a sad little tune if not
+  if (p.fase === 'resultados' && partidaActual.value.fase !== 'resultados') {
+    juego?.sonido.efecto(p.ganador === props.miId ? 'victoria' : 'derrota')
+  }
   partidaActual.value = p
   if (p.fase !== 'espera') error.value = ''
 })
@@ -50,7 +57,7 @@ onMounted(async () => {
     alCambiarSala: (s) => (salaActual.value = s),
     debug: props.debug,
   })
-  silencio.value = juego.sonido.silencio
+  sonido.value = juego.sonido
   vista.value.enfocar()
   // Here and not before: the game is already listening, so it sees the bots arrive and the countdown
   if (props.solo && (await ponerBots(2))) await empezar()
@@ -77,12 +84,6 @@ onBeforeUnmount(() => {
   dejarPartida()
   juego?.destruir()
 })
-
-const silencio = ref(false)
-function alternarSilencio() {
-  if (juego) silencio.value = juego.sonido.alternarSilencio()
-  vista.value?.enfocar()
-}
 
 /** 3 · 2 · 1 beeps and a higher one for "¡Ya!" */
 function sonarAviso(texto) {
@@ -179,12 +180,12 @@ async function copiarCodigo() {
       </template>
       <p v-else class="en-linea__nota muted">Ronda {{ partidaActual.ronda }} · gana el primero en {{ partidaActual.meta }}</p>
 
-      <div class="en-linea__botones">
-        <button type="button" class="btn btn--sm btn--ghost" :aria-pressed="silencio" @click="alternarSilencio">
-          {{ silencio ? 'Sin sonido' : 'Con sonido' }}
-        </button>
-        <button type="button" class="btn btn--sm btn--ghost" @click="emit('salir')">Salir de la sala</button>
-      </div>
+      <details class="en-linea__sonido">
+        <summary>Sonido</summary>
+        <PanelSonido :sonido="sonido" @listo="vista?.enfocar()" />
+      </details>
+
+      <button type="button" class="btn btn--sm btn--ghost en-linea__salir" @click="emit('salir')">Salir de la sala</button>
     </aside>
 
     <TeclasJuego class="en-linea__ayuda" />
@@ -277,6 +278,21 @@ async function copiarCodigo() {
 .en-linea__puntos small {
   font-size: 0.8rem;
   color: var(--muted);
+}
+
+.en-linea__sonido {
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+.en-linea__sonido > summary {
+  cursor: pointer;
+  font: 400 1.4rem var(--font-title);
+  margin-bottom: 4px;
+}
+
+.en-linea__salir {
+  justify-self: start;
 }
 
 .en-linea__botones {

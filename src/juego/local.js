@@ -5,6 +5,7 @@ import { crearEntrada, crearTeclado } from './entrada/teclado.js'
 import { interpolarCarro } from './interpolar.js'
 import { COLORES_CARRO } from './render/colores.js'
 import { crearEscena3D } from './render3d/escena.js'
+import { crearSonido } from './sonido.js'
 
 /**
  * Single-player driving with no server (phase 1): the same physics the server will run,
@@ -18,6 +19,8 @@ export function crearJuegoLocal(canvas, { circuito, params, color = COLORES_CARR
   const escena = crearEscena3D(canvas, pista)
   const entrada = crearEntrada([crearTeclado(canvas)])
   const camara = crearCamara()
+  // Same engine and tire sounds as online, to tune them here (unlocked on the first key)
+  const sonido = crearSonido()
   escena.agregarCarro('yo', color)
 
   let carro = crearCarro(pista, inicio)
@@ -26,10 +29,14 @@ export function crearJuegoLocal(canvas, { circuito, params, color = COLORES_CARR
   let ultimo = performance.now()
   let ultimoAviso = 0
   let cuadro = 0
+  let acel = 0
 
   function tick() {
     anterior = copiarCarro(carro)
-    avanzarCarro(carro, entrada.leer(), params, pista, TICK)
+    const ctrl = entrada.leer()
+    acel = ctrl.acel
+    const golpe = avanzarCarro(carro, ctrl, params, pista, TICK)
+    if (golpe > 5) sonido.efecto('muro', null, Math.min(1, golpe / 25))
     escena.registrarEfectos('yo', carro)
   }
 
@@ -47,6 +54,12 @@ export function crearJuegoLocal(canvas, { circuito, params, color = COLORES_CARR
     const visible = interpolarCarro(anterior, carro, acumulado / TICK)
     seguir(camara, pista, { ...visible, altura: alturaEn(pista, visible.x, visible.y) }, dt)
     escena.dibujar([{ id: 'yo', estado: visible }], camara, dt)
+    sonido.motor({
+      velocidad: (carro.vx * Math.cos(carro.angulo) + carro.vy * Math.sin(carro.angulo)) / params.velocidadMax,
+      acel,
+      derrape: carro.derrape,
+      tierra: carro.suelo === 'tierra',
+    })
 
     if (alEstado && ahora - ultimoAviso > 100) {
       ultimoAviso = ahora
@@ -57,6 +70,7 @@ export function crearJuegoLocal(canvas, { circuito, params, color = COLORES_CARR
   cuadro = requestAnimationFrame(dibujar)
 
   return {
+    sonido,
     reiniciar() {
       carro = crearCarro(pista, inicio)
       anterior = copiarCarro(carro)
@@ -66,6 +80,7 @@ export function crearJuegoLocal(canvas, { circuito, params, color = COLORES_CARR
     destruir() {
       cancelAnimationFrame(cuadro)
       entrada.destruir()
+      sonido.destruir()
       escena.destruir()
     },
   }
