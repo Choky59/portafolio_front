@@ -14,6 +14,10 @@ const MAX_ESCOMBROS = 60
 const MAX_QUEMADAS = 16
 const ANCHO_MARCA = 0.32
 const GRAVEDAD = 22
+/** A scorch mark stays this long (s) and then shrinks away over DESVANECE_QUEMADA */
+const VIDA_QUEMADA = 5
+const DESVANECE_QUEMADA = 1.5
+const RADIO_QUEMADA = 4.5
 
 export function crearEfectos3D(escena, altura = () => 0) {
   const matriz = new THREE.Matrix4()
@@ -49,6 +53,9 @@ export function crearEfectos3D(escena, altura = () => 0) {
   let cabezaMarcas = 0
   const quemadas = anillo(new THREE.CircleGeometry(1, 14).rotateX(-Math.PI / 2), sobreSuelo(0.55), MAX_QUEMADAS)
   let cabezaQuemadas = 0
+  /** Scorch marks on the ground: { i, x, z, giro (tilted with the slope), edad } */
+  const quemadasVivas = []
+  const normal = new THREE.Vector3()
 
   // Puffs: faceted balls that grow and then shrink away (dust, smoke, fire)
   const puffs = anillo(new THREE.IcosahedronGeometry(1, 0), toon('#ffffff'), MAX_PUFFS)
@@ -103,6 +110,11 @@ export function crearEfectos3D(escena, altura = () => 0) {
   return {
     /** Call once per physics tick for each car */
     registrar(id, carro) {
+      // Up a ramp or flying: no marks, no dust
+      if ((carro.z ?? 0) > 0.05) {
+        ruedas.set(id, null)
+        return
+      }
       const v = Math.hypot(carro.vx, carro.vy)
       const c = Math.cos(carro.angulo)
       const s = Math.sin(carro.angulo)
@@ -174,11 +186,15 @@ export function crearEfectos3D(escena, altura = () => 0) {
         escombros.setColorAt(i, color.set(k % 3 ? COLORES.tinta : '#9A8B78'))
       }
       escombros.instanceColor.needsUpdate = true
-      posicion.set(x, h + 0.04, z)
-      escala.set(4.5, 1, 4.5)
-      quemadas.setMatrixAt(cabezaQuemadas, matriz.compose(posicion, giro.identity(), escala))
+      // The scorch mark lies along the slope (flat, it would cut into a hill and look like a
+      // stray shadow) and fades away after a few seconds
+      const r = RADIO_QUEMADA
+      normal.set(-(altura(x + r, z) - altura(x - r, z)) / (2 * r), 1, -(altura(x, z + r) - altura(x, z - r)) / (2 * r)).normalize()
+      const i = cabezaQuemadas
       cabezaQuemadas = (cabezaQuemadas + 1) % MAX_QUEMADAS
-      quemadas.instanceMatrix.needsUpdate = true
+      const existente = quemadasVivas.findIndex((q) => q.i === i)
+      if (existente >= 0) quemadasVivas.splice(existente, 1)
+      quemadasVivas.push({ i, x, y: h + 0.08, z, giro: new THREE.Quaternion().setFromUnitVectors(arriba, normal), edad: 0 })
     },
 
     /** An item hit someone: a small burst in the item's color */
@@ -245,6 +261,21 @@ export function crearEfectos3D(escena, altura = () => 0) {
         escombros.setMatrixAt(e.i, matriz.compose(posicion, giro, escala))
       }
       escombros.instanceMatrix.needsUpdate = true
+
+      for (let k = quemadasVivas.length - 1; k >= 0; k--) {
+        const q = quemadasVivas[k]
+        q.edad += dt
+        const f = 1 - Math.max(0, q.edad - VIDA_QUEMADA) / DESVANECE_QUEMADA
+        if (f <= 0) {
+          quemadas.setMatrixAt(q.i, cero)
+          quemadasVivas.splice(k, 1)
+          continue
+        }
+        posicion.set(q.x, q.y, q.z)
+        escala.set(RADIO_QUEMADA * f, 1, RADIO_QUEMADA * f)
+        quemadas.setMatrixAt(q.i, matriz.compose(posicion, q.giro, escala))
+      }
+      quemadas.instanceMatrix.needsUpdate = true
     },
 
     limpiar() {
@@ -256,6 +287,7 @@ export function crearEfectos3D(escena, altura = () => 0) {
       for (const e of volando) escombros.setMatrixAt(e.i, cero)
       vivos.length = 0
       volando.length = 0
+      quemadasVivas.length = 0
       ruedas.clear()
     },
   }

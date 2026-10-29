@@ -8,6 +8,8 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 const props = defineProps({
   partida: { type: Object, required: true },
   vivo: { type: Boolean, default: true },
+  /** Eliminated in a room where spectators throw meteors: the message gets out of the way soon */
+  meteoritos: { type: Boolean, default: false },
   /** id → { nombre, color } */
   jugadores: { type: Object, required: true },
 })
@@ -26,6 +28,14 @@ watch(
   },
   { immediate: true },
 )
+/** When I blew up (to clear the "¡Kaboom!" so a spectator can see where to aim) */
+const muerto = ref(0)
+watch(
+  () => props.vivo,
+  (vivo) => {
+    if (!vivo) muerto.value = performance.now()
+  },
+)
 const reloj = setInterval(() => (ahora.value = performance.now()), 100)
 onBeforeUnmount(() => clearInterval(reloj))
 
@@ -36,6 +46,9 @@ const aviso = computed(() => {
   const { fase, ganadorRonda } = props.partida
   if (fase === 'cuenta') return { grande: String(Math.max(1, Math.ceil(restante.value / 1000))), chico: `Ronda ${props.partida.ronda}` }
   if (fase === 'carrera' && ahora.value < yaHasta.value) return { grande: '¡Ya!' }
+  if (fase === 'carrera' && !props.vivo && props.meteoritos) {
+    return ahora.value < muerto.value + 2500 ? { grande: '¡Kaboom!', chico: 'Ahora te toca tirar meteoritos' } : null
+  }
   if (fase === 'carrera' && !props.vivo) return { grande: '¡Kaboom!', chico: 'Te quedaste fuera. Espera la siguiente ronda.' }
   if (fase === 'ronda-fin') {
     const g = props.jugadores[ganadorRonda]

@@ -9,5 +9,6 @@ export function interpolarCarro(a, b, t) {
     y: a.y + (b.y - a.y) * t,
     angulo: a.angulo + da * t,
     w: a.w + (b.w - a.w) * t,
+    z: (a.z ?? 0) + ((b.z ?? 0) - (a.z ?? 0)) * t,
   }
 }

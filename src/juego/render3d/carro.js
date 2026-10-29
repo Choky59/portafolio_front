@@ -77,9 +77,13 @@ export function ponerCarro(carro3d, estado, altura = () => 0) {
   // Slope under the car: height difference between nose and tail, and between both sides
   const frente = altura(x + c * 1.6, y + s * 1.6) - altura(x - c * 1.6, y - s * 1.6)
   const lado = altura(x - s * 0.9, y + c * 0.9) - altura(x + s * 0.9, y - c * 0.9)
-  grupo.position.set(x, altura(x, y), y)
+  // `altura` includes the ramps, so up a ramp the car follows it. In the air (off a ramp, rampa
+  // -1 and z > 0) it's up by z, nose up while rising and down while falling
+  const volando = (estado.z ?? 0) > 0 && (estado.rampa ?? -1) < 0
+  grupo.position.set(x, altura(x, y) + (volando ? estado.z : 0), y)
+  const cabeceo = volando ? Math.atan2(estado.vz ?? 0, Math.hypot(estado.vx, estado.vy) || 1) * 0.8 : Math.atan2(frente, 3.2)
   // YXZ: heading first, then roll on the car's length (+X) and pitch on its width (+Z, its right)
-  grupo.rotation.set(-Math.atan2(lado, 1.8), -angulo, Math.atan2(frente, 3.2), 'YXZ')
+  grupo.rotation.set(volando ? 0 : -Math.atan2(lado, 1.8), -angulo, cabeceo, 'YXZ')
   // Lean out of the turn, more when sliding
   const inclinacion = Math.max(-0.12, Math.min(0.12, estado.w * 0.035 * (1 + estado.derrape)))
   cuerpo.rotation.x = inclinacion

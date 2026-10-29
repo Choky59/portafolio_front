@@ -1,16 +1,17 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 import { useRoute } from 'vue-router'
-import { COLORES, EVENTOS, LARGO_NOMBRE, MAX_JUGADORES } from '../../juego/compartido/protocolo'
+import { CATEGORIAS, COLORES, EVENTOS, LARGO_NOMBRE, MAX_JUGADORES } from '../../juego/compartido/protocolo'
 import { crearConexion } from '../../juego/red/conexion.js'
 import { iconoItem } from '../../juego/render/iconos.js'
+import { miniMapa } from '../../juego/render/miniMapa.js'
 import ITEMS from '../../juego/datos/items.json'
 import JuegoEnLinea from './JuegoEnLinea.vue'
 
 /**
- * Proyecto #3's game: pick a name and a color, then create a room (and share its code),
- * join one with a code, or pick one from the list of open rooms. Name and color are
- * remembered in this browser.
+ * Proyecto #3's game: pick a name and a color, then create a room on one of the maps (and
+ * share its code), join one with a code, or pick one from the list of open rooms. Name, color
+ * and map are remembered in this browser.
  *
  * The lobby keeps one connection to the game server: it asks for the open rooms every few
  * seconds and, when you create or join one, that same connection becomes the game's.
@@ -18,12 +19,20 @@ import JuegoEnLinea from './JuegoEnLinea.vue'
 const CADA_LISTA = 3000
 /** The items that come out of boxes (the grill, for example, only appears from the smoke) */
 const ITEMS_CAJAS = ITEMS.filter((i) => i.probabilidad > 0)
+/** The same, grouped by the box color they come out of */
+const GRUPOS_CAJAS = CATEGORIAS.map((c) => ({ ...c, items: ITEMS_CAJAS.filter((i) => i.categoria === c.id) })).filter((g) => g.items.length)
 const GUARDADO = 'carreras:jugador'
+/** The maps you can pick (test circuits are marked `oculto`), Hermosillo first */
+const MAPAS = Object.values(import.meta.glob('../../juego/datos/circuitos/*.json', { eager: true, import: 'default' }))
+  .filter((c) => !c.oculto)
+  .sort((a, b) => (a.id === 'hermosillo' ? -1 : b.id === 'hermosillo' ? 1 : a.nombre.localeCompare(b.nombre)))
+const nombreMapa = (id) => MAPAS.find((m) => m.id === id)?.nombre ?? id
 const route = useRoute()
 
 const guardado = leerGuardado()
 const nombre = ref(guardado.nombre ?? '')
 const color = ref(COLORES.some((c) => c.id === guardado.color) ? guardado.color : COLORES[0].id)
+const mapa = ref(MAPAS.some((m) => m.id === guardado.mapa) ? guardado.mapa : MAPAS[0].id)
 const codigo = ref('')
 const conectando = ref(false)
 const error = ref('')
@@ -40,7 +49,7 @@ function leerGuardado() {
 
 function guardar() {
   try {
-    localStorage.setItem(GUARDADO, JSON.stringify({ nombre: nombre.value.trim(), color: color.value }))
+    localStorage.setItem(GUARDADO, JSON.stringify({ nombre: nombre.value.trim(), color: color.value, mapa: mapa.value }))
   } catch {
     // Private mode: nothing to remember
   }
@@ -105,7 +114,12 @@ async function entrar(evento, { solo = false, sala = codigo.value } = {}) {
   conectando.value = true
   try {
     const conexion = await obtenerConexion()
-    const r = await conexion.pedir(evento, { nombre: nombre.value, color: color.value, codigo: sala })
+    const r = await conexion.pedir(evento, {
+      nombre: nombre.value,
+      color: color.value,
+      codigo: sala,
+      circuito: mapa.value,
+    })
     if (!r.ok) throw new Error(r.error)
     // This connection now belongs to the game
     conexionLobby = null
@@ -170,6 +184,16 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
       <div class="lobby__opcion">
         <h3>Crea una sala</h3>
         <p class="muted">Te damos un código para que se unan hasta {{ MAX_JUGADORES - 1 }} amigos, o juega solo contra bots.</p>
+        <fieldset class="lobby__mapas">
+          <legend>Mapa</legend>
+          <label v-for="m in MAPAS" :key="m.id" class="lobby__mapa">
+            <input v-model="mapa" type="radio" name="mapa" :value="m.id" class="visually-hidden" />
+            <span class="lobby__mapa-tarjeta">
+              <img :src="miniMapa(m)" alt="" width="240" height="150" />
+              <strong>{{ m.nombre }}</strong>
+            </span>
+          </label>
+        </fieldset>
         <div class="lobby__crear">
           <button type="submit" class="btn" :disabled="conectando">Crear sala</button>
           <button type="button" class="btn btn--ghost" :disabled="conectando" @click="entrar(EVENTOS.crear, { solo: true })">
@@ -204,7 +228,7 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
         <li v-for="s in salas" :key="s.codigo">
           <span class="lobby__sala-codigo">{{ s.codigo }}</span>
           <span class="lobby__sala-info">
-            <strong>Sala de {{ s.anfitrion }}</strong>
+            <strong>Sala de {{ s.anfitrion }} · {{ nombreMapa(s.circuito) }}</strong>
             <span class="muted">
               {{ s.jugadores }}/{{ MAX_JUGADORES }} jugadores<template v-if="s.bots"> ({{ s.bots }} {{ s.bots === 1 ? 'bot' : 'bots' }})</template>
               · {{ textoFase(s.fase) }}
@@ -230,8 +254,15 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
       <h3>Cómo se juega</h3>
       <ol>
         <li>Una sola cámara para todos sigue al que va adelante.</li>
-        <li>Si te quedas atrás y sales de la pantalla, o caes a un barranco del Cerro, explotas.</li>
+        <li>Si te quedas atrás y sales de la pantalla, caes a un barranco o te vas al mar, explotas.</li>
         <li>El último carro en pie gana la ronda. El primero en llegar a 5 puntos gana la partida.</li>
+        <li>
+          Cada color de caja da items de un tipo: de
+          <template v-for="(g, k) in GRUPOS_CAJAS" :key="g.id">
+            <span class="lobby__categoria" :style="{ '--color': g.color }">{{ g.nombre.toLowerCase() }}</span
+            >{{ k < GRUPOS_CAJAS.length - 2 ? ', ' : k === GRUPOS_CAJAS.length - 2 ? ' y ' : '' }}
+          </template>.
+        </li>
       </ol>
       <p class="muted">
         <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> o <kbd>WASD</kbd> manejar · <kbd>Espacio</kbd> freno de mano ·
@@ -241,15 +272,18 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
 
     <details class="lobby__items">
       <summary>Los {{ ITEMS_CAJAS.length }} items de Hermosillo</summary>
-      <ul>
-        <li v-for="item in ITEMS_CAJAS" :key="item.id">
-          <img :src="iconoItem(item)" alt="" width="44" height="44" loading="lazy" />
-          <span>
-            <strong>{{ item.nombre }}</strong>
-            <span class="muted">{{ item.descripcion }}</span>
-          </span>
-        </li>
-      </ul>
+      <section v-for="g in GRUPOS_CAJAS" :key="g.id" class="lobby__grupo">
+        <h4><span class="lobby__caja" :style="{ background: g.color }">?</span> Cajas de {{ g.nombre.toLowerCase() }}</h4>
+        <ul>
+          <li v-for="item in g.items" :key="item.id">
+            <img :src="iconoItem(item)" alt="" width="44" height="44" loading="lazy" />
+            <span>
+              <strong>{{ item.nombre }}</strong>
+              <span class="muted">{{ item.descripcion }}</span>
+            </span>
+          </li>
+        </ul>
+      </section>
     </details>
   </form>
 </template>
@@ -342,6 +376,30 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
 .lobby__items summary {
   cursor: pointer;
   font-weight: 600;
+}
+
+.lobby__grupo h4 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 0;
+  font: 400 1.3rem var(--font-title);
+}
+
+.lobby__caja {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 2px solid #22170f;
+  border-radius: 6px;
+  color: #22170f;
+  font: 400 1.1rem var(--font-title);
+}
+
+.lobby__categoria {
+  font-weight: 600;
+  color: var(--color);
 }
 
 .lobby__items ul {
@@ -448,6 +506,52 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
 
 .lobby__opcion p {
   margin: 0 0 12px;
+}
+
+.lobby__mapas {
+  border: 0;
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+}
+
+.lobby__mapas legend {
+  font-weight: 600;
+  font-size: 0.9rem;
+  margin-bottom: 6px;
+}
+
+.lobby__mapa-tarjeta {
+  display: grid;
+  gap: 4px;
+  padding: 4px;
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  cursor: pointer;
+}
+
+.lobby__mapa-tarjeta img {
+  width: 100%;
+  height: auto;
+  border-radius: calc(var(--radius) - 4px);
+}
+
+.lobby__mapa-tarjeta strong {
+  font: 400 1.1rem / 1.1 var(--font-title);
+  text-align: center;
+}
+
+.lobby__mapa input:checked + .lobby__mapa-tarjeta {
+  border-color: var(--text);
+  box-shadow: 0 0 0 1px var(--text);
+}
+
+.lobby__mapa input:focus-visible + .lobby__mapa-tarjeta {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
 }
 
 .lobby__crear {

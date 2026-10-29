@@ -116,7 +116,13 @@ async function copiarCodigo() {
 <template>
   <div class="en-linea">
     <LienzoJuego ref="vista" :hud="hud" :debug="debug" @tecla="juego?.sonido.activar()">
-      <AvisoPartida :partida="partidaActual" :vivo="hud.vivo" :jugadores="jugadores" @cambio="sonarAviso" />
+      <AvisoPartida
+        :partida="partidaActual"
+        :vivo="hud.vivo"
+        :meteoritos="!!hud.meteorito"
+        :jugadores="jugadores"
+        @cambio="sonarAviso"
+      />
       <ResultadosPartida
         v-if="partidaActual.fase === 'resultados'"
         :partida="partidaActual"

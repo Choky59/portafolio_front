@@ -17,7 +17,7 @@ const GRUPOS = [
       { ruta: 'aceleracion', etiqueta: 'Aceleración', min: 5, max: 60, paso: 1, unidad: 'm/s²' },
       { ruta: 'velocidadMax', etiqueta: 'Velocidad máxima', min: 10, max: 60, paso: 1, unidad: 'm/s' },
       { ruta: 'frenado', etiqueta: 'Frenado', min: 10, max: 80, paso: 1, unidad: 'm/s²' },
-      { ruta: 'reversaMax', etiqueta: 'Reversa máxima', min: 3, max: 20, paso: 1, unidad: 'm/s' },
+      { ruta: 'reversaMax', etiqueta: 'Reversa máxima', min: 5, max: 70, paso: 1, unidad: 'm/s' },
     ],
   },
   {

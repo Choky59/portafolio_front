@@ -48,6 +48,13 @@ defineExpose({
     <!-- Out of the shared camera's picture: a last chance to catch up before blowing up -->
     <div v-if="hud.fuera" class="lienzo-juego__fuera" aria-live="assertive">¡Alcánzalos!</div>
 
+    <!-- Spectator: aim with the mouse and click to throw a meteor -->
+    <div v-if="hud.meteorito" class="lienzo-juego__meteorito" aria-live="polite">
+      <template v-if="hud.meteorito.aviso">{{ hud.meteorito.aviso }}</template>
+      <template v-else-if="hud.meteorito.recarga > 0">Otro meteorito en {{ Math.ceil(hud.meteorito.recarga) }} s</template>
+      <template v-else><b>Clic en la pista</b> para tirar un meteorito</template>
+    </div>
+
     <!-- The item you're carrying: use it with Shift or E -->
     <div v-if="hud.item !== undefined" class="lienzo-juego__item" :class="{ 'lienzo-juego__item--vacio': !hud.item }">
       <template v-if="hud.item">
@@ -222,6 +229,25 @@ defineExpose({
   .lienzo-juego__fuera {
     animation: none;
   }
+}
+
+.lienzo-juego__meteorito {
+  position: absolute;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  max-width: calc(100% - 24px);
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(34, 23, 15, 0.8);
+  color: #f1e6cc;
+  font-size: 0.9rem;
+  text-align: center;
+  pointer-events: none;
+}
+
+.lienzo-juego__meteorito b {
+  color: #e4572e;
 }
 
 .lienzo-juego__pausa {

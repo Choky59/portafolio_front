@@ -19,6 +19,7 @@ export function crearTexturaSuelo(pista, { escala = 8 } = {}) {
   dibujarBarrancos(g, pista.circuito)
   dibujarCamino(g, pista)
   dibujarZonas(g, pista)
+  dibujarRampas(g, pista.circuito)
   dibujarAgua(g, pista.circuito)
   dibujarMeta(g, pista)
   return c
@@ -74,6 +75,27 @@ function dibujarRelieve(g, pista) {
     }
   }
   g.restore()
+}
+
+/**
+ * The way to each jump ramp: a patch of packed dirt with tire tracks from the road up to the
+ * ramp's foot, and scuffs where cars land (a hint that something's there)
+ */
+function dibujarRampas(g, circuito) {
+  ;(circuito.rampas ?? []).forEach((r, i) => {
+    const fx = Math.cos(r.angulo)
+    const fy = Math.sin(r.angulo)
+    const punto = (a, l) => [r.x + fx * a - fy * l, r.y + fy * a + fx * l]
+    brush(g, [punto(-14, 0), punto(0.5, 0)], { color: '#B8935F', ancho: r.ancho + 1, alpha: 0.4, pasadas: 1, temblor: 0.6, seed: 200 + i })
+    for (const l of [-1.1, 1.1]) {
+      brush(g, [punto(-14, l), punto(0, l)], { color: COLORES.tinta, ancho: 0.35, alpha: 0.35, pasadas: 1, temblor: 0.2, seed: 210 + i })
+    }
+    // Landing scuffs
+    for (const a of [r.largo + 16, r.largo + 22]) {
+      brush(g, [punto(a, -1.6), punto(a + 4, -1.4)], { color: COLORES.tinta, ancho: 0.4, alpha: 0.3, pasadas: 1, seed: 220 + i })
+      brush(g, [punto(a, 1.4), punto(a + 4, 1.6)], { color: COLORES.tinta, ancho: 0.4, alpha: 0.3, pasadas: 1, seed: 230 + i })
+    }
+  })
 }
 
 /** Cliffs: a dark, densely hatched drop with an inked rim */

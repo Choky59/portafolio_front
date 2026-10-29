@@ -56,6 +56,11 @@ const CANAL_DE = {
   coyotas: 'items',
   claxon: 'items',
   poste: 'items',
+  meteorito: 'items',
+  salto: 'llantas',
+  susto: 'items',
+  atropello: 'golpes',
+  impacto: 'golpes',
   cambio: 'motor',
   eliminado: 'avisos',
   cuenta: 'avisos',
@@ -319,6 +324,35 @@ export function crearSonido() {
       for (let i = 0; i < 9; i++) {
         soplo(s, { inicio: 0.08 + Math.random() * 0.7, duracion: 0.05, volumen: 0.25, desde: 4000, hasta: 1500, tipo: 'bandpass', q: 3 })
       }
+    },
+    /** A meteor on its way: a long whistle falling in pitch, as long as the fall (1.25 s) */
+    meteorito(s) {
+      tono(s, 1700, { tipo: 'sine', duracion: 1.2, volumen: 0.12, hasta: 380 })
+      soplo(s, { inicio: 0.55, duracion: 0.7, volumen: 0.2, desde: 900, hasta: 3000, tipo: 'bandpass', q: 2 })
+    },
+    /** The meteor lands: a deeper, longer explosion with a thump */
+    impacto(s) {
+      EFECTOS.explosion(s)
+      tono(s, 55, { tipo: 'sine', duracion: 1.2, volumen: 0.9, hasta: 20 })
+    },
+    /** People at the carne asada see a car coming: a few "¡aaay!" voices, wobbly and rising */
+    susto(s) {
+      ;[520, 610, 700].forEach((f, i) => {
+        tono(s, f, { tipo: 'triangle', inicio: i * 0.07, duracion: 0.45, volumen: 0.07, hasta: f * 1.35 })
+        tono(s, f * 1.02, { tipo: 'sawtooth', inicio: i * 0.07 + 0.02, duracion: 0.4, volumen: 0.025, hasta: f * 1.3 })
+      })
+    },
+    /** Someone got run over: a thump, a cartoon "waaah" going down and a little boing */
+    atropello(s) {
+      tono(s, 130, { tipo: 'sine', duracion: 0.25, volumen: 0.6, hasta: 50 })
+      soplo(s, { duracion: 0.12, volumen: 0.35, desde: 2500, hasta: 400 })
+      tono(s, 720, { tipo: 'triangle', inicio: 0.05, duracion: 0.7, volumen: 0.1, hasta: 260 })
+      tono(s, 300, { tipo: 'sine', inicio: 0.55, duracion: 0.3, volumen: 0.15, hasta: 520 })
+    },
+    /** Off a ramp: the engine note jumps up and a rush of air */
+    salto(s) {
+      soplo(s, { duracion: 0.6, volumen: 0.35, desde: 600, hasta: 2400, tipo: 'bandpass', q: 1.5 })
+      tono(s, 220, { tipo: 'triangle', duracion: 0.35, volumen: 0.1, hasta: 440 })
     },
     /** I blew up: a sad descending trombone */
     eliminado(s) {

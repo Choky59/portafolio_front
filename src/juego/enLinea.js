@@ -1,5 +1,5 @@
 import { alturaEn, prepararPista } from './compartido/pista'
-import { HITBOX, PARAMETROS_FISICA, avanzarCarro, colisionFija, copiarCarro, rapidez } from './compartido/fisica'
+import { HITBOX, PARAMETROS_FISICA, avanzarCarro, colisionFija, copiarCarro, enElAire, rapidez } from './compartido/fisica'
 import { PARAMETROS_CAMARA, PARAMETROS_CAMARA_PARTIDA, crearCamara, enVista, seguir } from './compartido/camara'
 import { EVENTOS, FASES, FASES_CON_MANEJO, desempacarCarro } from './compartido/protocolo'
 import { crearEntrada, crearTeclado } from './entrada/teclado.js'
@@ -33,6 +33,9 @@ import ITEMS from './datos/items.json'
  * - La cámara compartida (en la partida) la calcula el servidor siguiendo al líder; aquí se
  *   interpola igual, con el reloj del servidor (`k`). Es la misma cámara con la que el servidor
  *   decide quién se salió de la imagen.
+ *
+ * - Espectador (ya explotaste, en una sala de 3 o más): con el mouse apuntas a la pista y con un
+ *   clic tiras un meteorito. El servidor valida y lo suelta; aquí solo se apunta y se dibuja.
  */
 
 const circuitos = Object.fromEntries(
@@ -54,6 +57,11 @@ const MAX_CORRECCION = 8
 /** Diferencias menores son ruido de punto flotante entre navegadores: se ignoran */
 const MIN_CORRECCION = 0.02
 const CADA_PING = 2000
+/** Los nombres sobre los carros: se ven en la cuenta y estos segundos de carrera, y luego se desvanecen */
+const NOMBRES_SEGUNDOS = 3
+const NOMBRES_DESVANECE = 0.8
+/** En salas de al menos tantos jugadores, quien explota puede tirar meteoritos (igual que el servidor) */
+const MIN_METEORITOS = 3
 
 /**
  * Una línea de tiempo con su propio reloj (`t`): guarda lo recibido y estima el desfase con el
@@ -136,12 +144,14 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
   /** Los demás: id → { linea, visual (dónde se dibuja ahora) } */
   const otros = new Map()
   const enEscena = new Set()
+  let cuantos = sala.jugadores.length
 
   function sincronizarSala(nueva) {
     const ids = new Set(nueva.jugadores.map((j) => j.id))
+    cuantos = nueva.jugadores.length
     for (const j of nueva.jugadores) {
       if (enEscena.has(j.id)) continue
-      escena.agregarCarro(j.id, colorCarro(j.color))
+      escena.agregarCarro(j.id, colorCarro(j.color), j.nombre)
       enEscena.add(j.id)
     }
     for (const id of [...enEscena]) {
@@ -157,6 +167,8 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
   /* -------------------------- Predicción propia --------------------------- */
 
   let fase = 'espera'
+  /** Cuándo arrancó la carrera actual (reloj local, ms): para desvanecer los nombres */
+  let inicioCarrera = 0
   let miVivo = true
   let miItem = -1
   const puedoManejar = () => FASES_CON_MANEJO.includes(fase) && miVivo
@@ -197,7 +209,10 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
     for (const [id, otro] of otros) if (otro.visual?.vivo) escena.registrarEfectos(id, otro.visual)
     if (!predicho || !puedoManejar()) return
     anterior = copiarCarro(predicho)
+    const enTierra = !enElAire(predicho)
     const contraMuro = Math.max(avanzarCarro(predicho, ctrl, PARAMETROS_FISICA, pista, tick), contraEstorbos(predicho))
+    // Off a ramp: whoosh (the landing comes back as a hit, like a wall)
+    if (enTierra && enElAire(predicho)) sonido.efecto('salto', predicho)
     if (contraMuro > 5) sonido.efecto('muro', predicho, Math.min(1, contraMuro / 25))
     escena.registrarEfectos(miId, predicho)
   }
@@ -254,17 +269,21 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
     // Una instantánea vieja deshacería controles ya confirmados (TCP no reordena, pero por si acaso)
     if (inst.k <= ultimaInstantanea) return
     ultimaInstantanea = inst.k
+    const antes = fase
     fase = FASES[inst.f] ?? 'espera'
+    // Ronda nueva: pista limpia de marcas de llanta y quemadas de la ronda anterior
+    if (fase === 'cuenta' && antes !== 'cuenta') escena.limpiarEfectos()
+    if (fase === 'carrera' && antes !== 'carrera') inicioCarrera = performance.now()
     const ahora = relojLocal()
     const cam = inst.cam
       ? { x: inst.cam[0], y: inst.cam[1], h: inst.cam[2], rumbo: inst.cam[3], zoom: inst.cam[4] ?? 1, iniciada: true }
       : null
-    const entidades = inst.e.map(([id, item, x, y, angulo, vida]) => ({ id, item, x, y, angulo, vida }))
+    const entidades = inst.e.map(([id, item, x, y, angulo, vida, etapa = 0]) => ({ id, item, x, y, angulo, vida, etapa }))
     estorbos = entidades
       .filter((e) => ITEMS[e.item]?.mecanica === 'estorbo')
       .map((e) => ({ x: e.x, y: e.y, radio: ITEMS[e.item].radio ?? 0.5 }))
     registrar(mundo, inst.k, { cam, entidades }, ahora)
-    escena.ponerCajas(new Set(inst.ci))
+    escena.ponerCajas(new Set(inst.ci), inst.cc)
     for (const r of inst.c) {
       const { id, estado, seq: suSeq, vivo, item } = desempacarCarro(r)
       if (id === miId) {
@@ -308,6 +327,32 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
       case 'punto':
         if (evento.id) sonido.efecto('punto')
         break
+      case 'meteorito':
+        sonido.efecto('meteorito', evento)
+        break
+      case 'susto':
+        // A whole group gets scared at once: one scream is enough
+        if (performance.now() - ultimoSusto > 1500) {
+          ultimoSusto = performance.now()
+          sonido.efecto('susto', evento)
+        }
+        break
+      case 'atropello':
+        // Like the meteor: what's loose is drawn RETRASO_TICKS in the past
+        setTimeout(() => {
+          if (destruido) return
+          escena.atropellar(evento)
+          sonido.efecto('atropello', evento)
+        }, RETRASO_TICKS * tick * 1000)
+        break
+      case 'impacto':
+        // Lo suelto se dibuja RETRASO_TICKS en el pasado: el golpe espera a que la roca llegue al piso
+        setTimeout(() => {
+          if (destruido) return
+          escena.explotar(evento.x, evento.y)
+          sonido.efecto('impacto', evento)
+        }, RETRASO_TICKS * tick * 1000)
+        break
     }
     alEvento?.(evento)
   }
@@ -325,6 +370,56 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
     const s = Math.min(MAX_DE_LARGO, t - ultimo.t) * tick
     return { ...v, x: v.x + v.vx * s, y: v.y + v.vy * s, angulo: v.angulo + v.w * s }
   }
+
+  /* ------------------------------ Meteoritos ------------------------------ */
+
+  /** Dónde apunta el mouse en el piso (o null) y desde cuándo hay otro meteorito (reloj local, ms) */
+  let ultimoSusto = 0
+  let apuntado = null
+  let meteoritoListo = 0
+  let lanzando = false
+  let destruido = false
+  const puedoLanzar = () => fase === 'carrera' && !miVivo && cuantos >= MIN_METEORITOS
+
+  function puntoDelMouse(evento) {
+    const caja = canvas.getBoundingClientRect()
+    const nx = ((evento.clientX - caja.left) / caja.width) * 2 - 1
+    const ny = -(((evento.clientY - caja.top) / caja.height) * 2 - 1)
+    return escena.sueloEn(nx, ny)
+  }
+
+  function alMover(evento) {
+    apuntado = puedoLanzar() ? puntoDelMouse(evento) : null
+  }
+
+  async function alClic(evento) {
+    if (!puedoLanzar() || lanzando || performance.now() < meteoritoListo) return
+    const punto = puntoDelMouse(evento)
+    if (!punto) return
+    lanzando = true
+    try {
+      const r = await conexion.pedir(EVENTOS.meteorito, punto)
+      if (r.ok) meteoritoListo = performance.now() + r.recargaMs
+      else avisar(r.error)
+    } catch (e) {
+      avisar(e.message)
+    } finally {
+      lanzando = false
+    }
+  }
+  /** El último "no se pudo" del servidor, para el HUD (unos segundos) */
+  let avisoMeteorito = ''
+  let relojAviso = 0
+  function avisar(texto) {
+    avisoMeteorito = texto
+    clearTimeout(relojAviso)
+    relojAviso = setTimeout(() => (avisoMeteorito = ''), 2500)
+  }
+  const alSalir = () => (apuntado = null)
+
+  canvas.addEventListener('pointermove', alMover)
+  canvas.addEventListener('pointerdown', alClic)
+  canvas.addEventListener('pointerleave', alSalir)
 
   const dejar = [
     conexion.escuchar(EVENTOS.estado, recibir),
@@ -396,6 +491,20 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
     const delServidor = mundo.historial.length ? valorEn(mundo, local + mundo.desfase - RETRASO_TICKS, mezclarMundo) : null
     escena.ponerEntidades(delServidor?.entidades ?? [])
 
+    // Los nombres: completos en la cuenta y los primeros segundos de carrera, luego se van (ease out)
+    let nombres = 0
+    if (fase === 'cuenta') nombres = 1
+    else if (fase === 'carrera') {
+      const f = Math.min(1, Math.max(0, ((ahora - inicioCarrera) / 1000 - NOMBRES_SEGUNDOS) / NOMBRES_DESVANECE))
+      nombres = 1 - (1 - (1 - f) ** 3)
+    }
+    escena.ponerNombres(nombres)
+
+    // La mira del espectador
+    const meteoritoListoYa = ahora >= meteoritoListo && !lanzando
+    escena.ponerMira(puedoLanzar() ? apuntado : null, meteoritoListoYa)
+    canvas.style.cursor = puedoLanzar() ? 'crosshair' : ''
+
     // En la partida, la cámara compartida del servidor; en la sala de espera, la propia
     let fueraDeVista = false
     if (delServidor?.cam) {
@@ -440,6 +549,8 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
         vivo: miVivo,
         fuera: fueraDeVista,
         item: ITEMS[miItem] ?? null,
+        // Espectador: si puede tirar meteoritos y en cuánto tiempo (s) le toca otro
+        meteorito: puedoLanzar() ? { recarga: Math.max(0, (meteoritoListo - ahora) / 1000), aviso: avisoMeteorito } : null,
       })
     }
   }
@@ -449,6 +560,12 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
   return {
     sonido,
     destruir() {
+      destruido = true
+      canvas.removeEventListener('pointermove', alMover)
+      canvas.removeEventListener('pointerdown', alClic)
+      canvas.removeEventListener('pointerleave', alSalir)
+      canvas.style.cursor = ''
+      clearTimeout(relojAviso)
       cancelAnimationFrame(cuadro)
       clearInterval(relojPing)
       dejar.forEach((f) => f())
