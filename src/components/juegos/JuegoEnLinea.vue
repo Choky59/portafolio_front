@@ -55,8 +55,15 @@ function salirDeCompleta() {
   document.exitFullscreen?.().catch(() => {})
   vista.value?.enfocar()
 }
-/** Playing from your computer: full screen and the keyboard right back on the game */
+/**
+ * "Pantalla completa". On a computer: real full screen and the keyboard right back on the game.
+ * On a phone (touch screen) the browser can't put just the game in full screen (iPhone only does it
+ * with videos), so it goes phone-style: the game on the whole screen with the touch controls over
+ * it, the same as joining from "Jugar en el celular"; the ✕ comes back to this view.
+ */
+const esTactil = () => window.matchMedia?.('(pointer: coarse)').matches
 async function entrarACompleta() {
+  if (esTactil()) return entrarACelular()
   await vista.value?.pantallaCompleta()
   vista.value?.enfocar()
 }
@@ -74,13 +81,41 @@ const dejarPartida = props.conexion.escuchar(EVENTOS.partida, (p) => {
   if (p.fase !== 'espera') error.value = ''
 })
 
-/** Phone: the on-screen controls (joystick, Item, Frenar) feed the game like the keyboard */
-const mando = props.celular ? crearMando() : null
+/**
+ * Phone-style: the game on the whole screen with the on-screen controls (joystick, Item, Frenar)
+ * feeding it like the keyboard. From the start ("Jugar en el celular") or later with "Pantalla
+ * completa" on a touch screen. The mando always exists, but switched off it reads as nothing
+ * pressed (otherwise the car would go on its own on a computer).
+ */
+const modoCelular = ref(props.celular)
+/** Got phone-style with "Pantalla completa": the ✕ comes back instead of leaving the room */
+const celularPorBoton = ref(false)
+const mando = crearMando({ activo: props.celular })
 // ?debug: the touch controls' state, for testing tools
-if (props.debug && mando) window.__mando = mando.estado
+if (props.debug) window.__mando = mando.estado
 let candado = null
 /** The controls hide when you're out (a tap on the picture throws a meteor) and on the results */
-const conMando = computed(() => props.celular && hud.value.vivo !== false && partidaActual.value.fase !== 'resultados')
+const conMando = computed(() => modoCelular.value && hud.value.vivo !== false && partidaActual.value.fase !== 'resultados')
+
+async function entrarACelular() {
+  modoCelular.value = true
+  celularPorBoton.value = true
+  mando.estado.activo = true
+  // Real full screen of the page where the browser allows it (Android); the layout works without it
+  document.documentElement.requestFullscreen?.().catch(() => {})
+  screen.orientation?.lock?.('landscape').catch(() => {})
+  candado = await navigator.wakeLock?.request('screen').catch(() => null)
+}
+
+function salirDeCelular() {
+  modoCelular.value = false
+  celularPorBoton.value = false
+  mando.estado.activo = false
+  mando.soltarTodo()
+  candado?.release?.().catch(() => {})
+  candado = null
+  if (document.fullscreenElement) document.exitFullscreen?.().catch(() => {})
+}
 const miColor = computed(() => jugadores.value[props.miId]?.color)
 
 onMounted(async () => {
@@ -158,13 +193,13 @@ async function copiarCodigo() {
 </script>
 
 <template>
-  <div class="en-linea" :class="{ 'en-linea--celular': celular }">
+  <div class="en-linea" :class="{ 'en-linea--celular': modoCelular }">
     <LienzoJuego
       ref="vista"
       :hud="hud"
       :debug="debug"
       :pantalla="pantalla"
-      :celular="celular"
+      :celular="modoCelular"
       @tecla="juego?.sonido.activar()"
     >
       <AvisoPartida
@@ -189,15 +224,15 @@ async function copiarCodigo() {
            QR); playing on your own computer, on the left (your item is in the top right corner) -->
       <!-- On the phone: the controls over the game, in your car's color -->
       <MandoTactil v-if="conMando" :mando="mando" superpuesto :style="{ '--color': miColor }" />
-      <p v-if="celular" class="en-linea__girar">Gira tu celular para jugar</p>
+      <p v-if="modoCelular" class="en-linea__girar">Gira tu celular para jugar</p>
 
-      <template v-if="completa || celular">
+      <template v-if="completa || modoCelular">
         <button
-          v-if="celular"
+          v-if="modoCelular"
           type="button"
           class="en-linea__salir-completa"
-          title="Salir de la sala"
-          @click="emit('salir')"
+          :title="celularPorBoton ? 'Salir de pantalla completa' : 'Salir de la sala'"
+          @click="celularPorBoton ? salirDeCelular() : emit('salir')"
         >
           ✕
         </button>
@@ -256,7 +291,7 @@ async function copiarCodigo() {
       </template>
     </LienzoJuego>
 
-    <aside v-if="!celular" class="en-linea__sala card" aria-label="Sala">
+    <aside v-if="!modoCelular" class="en-linea__sala card" aria-label="Sala">
       <template v-if="pantalla">
         <p class="en-linea__etiqueta muted">Modo local · únete con tu celular</p>
         <img v-if="qr" :src="qr" class="en-linea__qr" width="240" height="240" alt="Código QR para unirse desde el celular" />
@@ -332,7 +367,7 @@ async function copiarCodigo() {
       <button type="button" class="btn btn--sm btn--ghost en-linea__salir" @click="emit('salir')">Salir de la sala</button>
     </aside>
 
-    <TeclasJuego v-if="!pantalla && !celular" class="en-linea__ayuda" />
+    <TeclasJuego v-if="!pantalla && !modoCelular" class="en-linea__ayuda" />
   </div>
 </template>
 
