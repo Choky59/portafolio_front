@@ -49,6 +49,12 @@ const alCambiarCompleta = () => (completa.value = !!document.fullscreenElement)
 document.addEventListener('fullscreenchange', alCambiarCompleta)
 function salirDeCompleta() {
   document.exitFullscreen?.().catch(() => {})
+  vista.value?.enfocar()
+}
+/** Playing from your computer: full screen and the keyboard right back on the game */
+async function entrarACompleta() {
+  await vista.value?.pantallaCompleta()
+  vista.value?.enfocar()
 }
 watchEffect(async () => {
   if (!pantalla.value) return
@@ -152,22 +158,27 @@ async function copiarCodigo() {
         @salir="emit('salir')"
       />
 
-      <!-- Modo local in full screen: what the side panel would show -->
-      <template v-if="pantalla && completa">
+      <!-- Full screen: what the side panel would show. In modo local it goes on the right (with the
+           QR); playing on your own computer, on the left (your item is in the top right corner) -->
+      <template v-if="completa">
         <button type="button" class="en-linea__salir-completa" title="Salir de pantalla completa (Esc)" @click="salirDeCompleta">
           ✕
         </button>
-        <div v-if="partidaActual.fase === 'espera'" class="en-linea__unirse-completa">
-          <img v-if="qr" :src="qr" width="150" height="150" alt="Código QR para unirse desde el celular" />
+        <div
+          v-if="partidaActual.fase === 'espera'"
+          class="en-linea__unirse-completa"
+          :class="{ 'en-linea__completa--izquierda': !pantalla }"
+        >
+          <img v-if="pantalla && qr" :src="qr" width="150" height="150" alt="Código QR para unirse desde el celular" />
           <div>
-            <p class="en-linea__etiqueta">Únete con tu celular</p>
+            <p class="en-linea__etiqueta">{{ pantalla ? 'Únete con tu celular' : 'Código de la sala' }}</p>
             <p class="en-linea__codigo en-linea__codigo--fijo">{{ salaActual.codigo }}</p>
             <ul class="en-linea__mini-jugadores">
               <li v-for="j in salaActual.jugadores" :key="j.id">
                 <span class="en-linea__color" :style="{ background: colorCarro(j.color) }"></span>{{ j.nombre }}
               </li>
             </ul>
-            <div class="en-linea__botones">
+            <div v-if="esAnfitrion" class="en-linea__botones">
               <button type="button" class="btn btn--sm" :disabled="salaActual.jugadores.length < 2" @click="empezar">
                 Empezar partida
               </button>
@@ -180,10 +191,16 @@ async function copiarCodigo() {
                 + Bot
               </button>
             </div>
+            <p v-else class="en-linea__nota">Esperando a que {{ jugadores[salaActual.anfitrion]?.nombre }} empiece.</p>
             <p v-if="error" class="en-linea__error" role="alert">{{ error }}</p>
           </div>
         </div>
-        <ul v-else class="en-linea__marcador-completa" aria-label="Puntos">
+        <ul
+          v-else
+          class="en-linea__marcador-completa"
+          :class="{ 'en-linea__completa--izquierda': !pantalla }"
+          aria-label="Puntos"
+        >
           <li v-for="j in salaActual.jugadores" :key="j.id">
             <span class="en-linea__color" :style="{ background: colorCarro(j.color) }"></span>
             <span>{{ j.nombre }}</span>
@@ -209,6 +226,9 @@ async function copiarCodigo() {
           {{ salaActual.codigo }}
         </button>
         <p class="en-linea__nota muted">{{ copiado ? '¡Copiado!' : 'Compártelo para que se unan tus amigos.' }}</p>
+        <button type="button" class="btn btn--sm btn--ghost en-linea__completa-boton" @click="entrarACompleta">
+          Pantalla completa
+        </button>
       </template>
 
       <h3 class="en-linea__titulo">Jugadores {{ salaActual.jugadores.length }}/{{ MAX_JUGADORES }}</h3>
@@ -359,6 +379,17 @@ async function copiarCodigo() {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.en-linea__unirse-completa.en-linea__completa--izquierda,
+.en-linea__marcador-completa.en-linea__completa--izquierda {
+  right: auto;
+  left: 12px;
+  top: 56px;
+}
+
+.en-linea__completa-boton {
+  justify-self: start;
 }
 
 .en-linea__marcador-completa {

@@ -29,7 +29,9 @@ defineExpose({
 </script>
 
 <template>
-  <div ref="contenedor" class="lienzo-juego">
+  <!-- The frame is what goes full screen; inside, the game keeps 16:9 and every overlay stays on it -->
+  <div ref="contenedor" class="lienzo-juego-marco">
+  <div class="lienzo-juego">
     <canvas
       ref="lienzo"
       class="lienzo-juego__canvas"
@@ -80,12 +82,16 @@ defineExpose({
          their buttons blurs the canvas, and the click must still land on the button -->
     <slot />
   </div>
+  </div>
 </template>
 
 <style scoped>
+.lienzo-juego-marco {
+  align-self: start;
+}
+
 .lienzo-juego {
   position: relative;
-  align-self: start;
   border-radius: var(--radius-lg);
   overflow: hidden;
   box-shadow: var(--shadow);
@@ -104,16 +110,18 @@ defineExpose({
   outline: none;
 }
 
-/* Full screen: as big as fits keeping 16:9 (everybody sees the same picture), dark bands around */
-.lienzo-juego:fullscreen {
+/* Full screen: the game as big as fits keeping 16:9 (everybody sees the same picture), dark bands
+   around; the HUD and overlays stay on the picture, not on the bands */
+.lienzo-juego-marco:fullscreen {
   display: grid;
   place-items: center;
-  border-radius: 0;
   background: #22170f;
 }
 
-.lienzo-juego:fullscreen .lienzo-juego__canvas {
+.lienzo-juego-marco:fullscreen .lienzo-juego {
   width: min(100vw, calc(100vh * 16 / 9));
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .lienzo-juego__hud {
