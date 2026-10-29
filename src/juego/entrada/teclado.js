@@ -14,13 +14,12 @@ const TECLAS = {
   KeyA: 'izquierda',
   ArrowRight: 'derecha',
   KeyD: 'derecha',
-  Space: 'mano',
   ShiftLeft: 'item',
   ShiftRight: 'item',
   KeyE: 'item',
 }
 
-/** Listens on `elemento` (the focused game canvas) so the arrows and space don't scroll the page */
+/** Listens on `elemento` (the focused game canvas) so the arrows don't scroll the page */
 export function crearTeclado(elemento) {
   const activas = new Set()
   // The item key is a tap: remember it was pressed until the next read, or a tap shorter
@@ -53,7 +52,8 @@ export function crearTeclado(elemento) {
         giro: (activas.has('derecha') ? 1 : 0) - (activas.has('izquierda') ? 1 : 0),
         acel: activas.has('acel') ? 1 : 0,
         freno: activas.has('freno') ? 1 : 0,
-        mano: activas.has('mano'),
+        // No handbrake key any more (it wasn't easy to use); the physics still has it for the bots
+        mano: false,
         item,
       }
     },

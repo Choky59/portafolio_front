@@ -512,8 +512,10 @@ export function crearJuegoEnLinea(canvas, { conexion, sala, miId, alEstado, alCa
       // ¿Me estoy saliendo de la imagen? Aviso para intentar el último recobro (la regla la decide el servidor)
       fueraDeVista = fase === 'carrera' && !!mio && !enVista(delServidor.cam, mio.x, mio.y, alturaEn(pista, mio.x, mio.y))
     } else {
-      const seguido = mio ?? estados[0]?.estado
-      if (seguido) seguir(camaraPropia, pista, { ...seguido, altura: alturaEn(pista, seguido.x, seguido.y) }, dt)
+      // Nobody to follow yet (the modo local screen before anyone joins): the start line
+      const [sx, sy] = pista.puntos[0]
+      const seguido = mio ?? estados[0]?.estado ?? { x: sx, y: sy, indice: 0 }
+      seguir(camaraPropia, pista, { ...seguido, altura: alturaEn(pista, seguido.x, seguido.y) }, dt)
       escena.dibujar(estados, camaraPropia, dt, PARAMETROS_CAMARA)
     }
 

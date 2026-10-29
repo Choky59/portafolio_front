@@ -135,6 +135,31 @@ async function entrar(evento, { solo = false, sala = codigo.value } = {}) {
   }
 }
 
+/**
+ * Modo local: this computer becomes the screen everybody looks at (no car of its own) and the
+ * players join from their phones, which become the controllers
+ */
+async function crearPantalla() {
+  error.value = ''
+  guardar()
+  conectando.value = true
+  try {
+    const conexion = await obtenerConexion()
+    const r = await conexion.pedir(EVENTOS.pantalla, { circuito: mapa.value })
+    if (!r.ok) throw new Error(r.error)
+    conexionLobby = null
+    conexion.alCerrarse(() => {
+      salir()
+      error.value = 'Se perdió la conexión con el servidor'
+    })
+    partida.value = { conexion, sala: r.sala, estado: r.partida, miId: r.id, solo: false }
+  } catch (e) {
+    error.value = e.message
+  } finally {
+    conectando.value = false
+  }
+}
+
 function salir() {
   partida.value?.conexion.cerrar()
   partida.value = null
@@ -203,6 +228,17 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
       </div>
 
       <div class="lobby__opcion">
+        <h3>Modo local</h3>
+        <p class="muted">
+          Todos ven esta pantalla y cada quien maneja con su celular: escanean el QR, ponen su nombre y listo. Hasta
+          {{ MAX_JUGADORES }} jugadores.
+        </p>
+        <button type="button" class="btn btn--ghost" :disabled="conectando" @click="crearPantalla">
+          Usar celulares como control
+        </button>
+      </div>
+
+      <div class="lobby__opcion">
         <h3>Únete con un código</h3>
         <div class="lobby__unirse">
           <input
@@ -265,8 +301,8 @@ const textoFase = (fase) => (fase === 'espera' ? 'Esperando jugadores' : 'En par
         </li>
       </ol>
       <p class="muted">
-        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> o <kbd>WASD</kbd> manejar · <kbd>Espacio</kbd> freno de mano ·
-        <kbd>Shift</kbd> o <kbd>E</kbd> usar item
+        <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> o <kbd>WASD</kbd> manejar · <kbd>Shift</kbd> o <kbd>E</kbd> usar
+        item
       </p>
     </div>
 

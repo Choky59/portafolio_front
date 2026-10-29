@@ -11,6 +11,8 @@ defineProps({
   hud: { type: Object, required: true },
   // ?debug: how often and how far the own car had to be corrected (rubber-banding)
   debug: { type: Boolean, default: false },
+  /** Modo local: this is the shared screen (no car of its own): no HUD, no "click to drive" */
+  pantalla: { type: Boolean, default: false },
 })
 const emit = defineEmits(['tecla'])
 
@@ -29,13 +31,13 @@ defineExpose({
       ref="lienzo"
       class="lienzo-juego__canvas"
       tabindex="0"
-      aria-label="Juego: maneja con flechas o WASD, espacio para el freno de mano"
+      aria-label="Juego: maneja con flechas o WASD, Shift o E para usar el item"
       @focus="enfocado = true"
       @blur="enfocado = false"
       @keydown="emit('tecla', $event)"
     ></canvas>
 
-    <div class="lienzo-juego__hud" aria-hidden="true">
+    <div v-if="!pantalla" class="lienzo-juego__hud" aria-hidden="true">
       <span class="lienzo-juego__velocidad">{{ hud.kmh }}<small> km/h</small></span>
       <span class="lienzo-juego__suelo" :class="{ 'lienzo-juego__suelo--tierra': hud.suelo === 'tierra' }">{{ hud.suelo }}</span>
       <span class="lienzo-juego__derrape"><span :style="{ width: `${hud.derrape * 100}%` }"></span></span>
@@ -67,7 +69,7 @@ defineExpose({
       <span v-else class="lienzo-juego__sin-item">Agarra una caja <b>?</b></span>
     </div>
 
-    <button v-if="!enfocado" type="button" class="lienzo-juego__pausa" @click="lienzo.focus()">
+    <button v-if="!enfocado && !pantalla" type="button" class="lienzo-juego__pausa" @click="lienzo.focus()">
       Haz clic para manejar
     </button>
 

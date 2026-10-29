@@ -1,5 +1,6 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watchEffect } from 'vue'
+import QRCode from 'qrcode'
 import { crearJuegoEnLinea } from '../../juego/enLinea.js'
 import { EVENTOS, MAX_JUGADORES } from '../../juego/compartido/protocolo'
 import { colorCarro } from '../../juego/render/colores.js'
@@ -38,6 +39,14 @@ const jugadores = computed(() =>
 )
 const puntos = computed(() => Object.fromEntries(partidaActual.value.puntos.map((p) => [p.id, p.puntos])))
 const enPartida = computed(() => partidaActual.value.fase !== 'espera')
+/** Modo local: this computer is the shared screen; players join from their phones */
+const pantalla = computed(() => !!salaActual.value.local)
+const ligaControl = computed(() => `${location.origin}/control?sala=${encodeURIComponent(salaActual.value.codigo)}`)
+const qr = ref('')
+watchEffect(async () => {
+  if (!pantalla.value) return
+  qr.value = await QRCode.toDataURL(ligaControl.value, { margin: 1, width: 240, color: { dark: '#22170F', light: '#F1E6CC' } })
+})
 
 const dejarPartida = props.conexion.escuchar(EVENTOS.partida, (p) => {
   // End of the match: fanfare if I won, a sad little tune if not
@@ -115,7 +124,7 @@ async function copiarCodigo() {
 
 <template>
   <div class="en-linea">
-    <LienzoJuego ref="vista" :hud="hud" :debug="debug" @tecla="juego?.sonido.activar()">
+    <LienzoJuego ref="vista" :hud="hud" :debug="debug" :pantalla="pantalla" @tecla="juego?.sonido.activar()">
       <AvisoPartida
         :partida="partidaActual"
         :vivo="hud.vivo"
@@ -136,11 +145,21 @@ async function copiarCodigo() {
     </LienzoJuego>
 
     <aside class="en-linea__sala card" aria-label="Sala">
-      <p class="en-linea__etiqueta muted">Código de la sala</p>
-      <button type="button" class="en-linea__codigo" title="Copiar código" @click="copiarCodigo">
-        {{ salaActual.codigo }}
-      </button>
-      <p class="en-linea__nota muted">{{ copiado ? '¡Copiado!' : 'Compártelo para que se unan tus amigos.' }}</p>
+      <template v-if="pantalla">
+        <p class="en-linea__etiqueta muted">Modo local · únete con tu celular</p>
+        <img v-if="qr" :src="qr" class="en-linea__qr" width="240" height="240" alt="Código QR para unirse desde el celular" />
+        <p class="en-linea__nota muted">
+          O abre <strong>{{ ligaControl.replace(/^https?:\/\//, '').replace(/\?.*$/, '') }}</strong> y escribe el código
+        </p>
+        <p class="en-linea__codigo en-linea__codigo--fijo">{{ salaActual.codigo }}</p>
+      </template>
+      <template v-else>
+        <p class="en-linea__etiqueta muted">Código de la sala</p>
+        <button type="button" class="en-linea__codigo" title="Copiar código" @click="copiarCodigo">
+          {{ salaActual.codigo }}
+        </button>
+        <p class="en-linea__nota muted">{{ copiado ? '¡Copiado!' : 'Compártelo para que se unan tus amigos.' }}</p>
+      </template>
 
       <h3 class="en-linea__titulo">Jugadores {{ salaActual.jugadores.length }}/{{ MAX_JUGADORES }}</h3>
       <ul class="en-linea__jugadores">
@@ -178,7 +197,10 @@ async function copiarCodigo() {
           <button v-if="bots" type="button" class="btn btn--sm btn--ghost" @click="ponerBots(0)">Quitar bots</button>
         </div>
         <p class="en-linea__nota muted">
-          <template v-if="salaActual.jugadores.length < 2">Mientras llega alguien más, maneja libre. Se juega desde 2 (los bots cuentan).</template>
+          <template v-if="pantalla && !salaActual.jugadores.length">Esperando a que alguien se una desde su celular.</template>
+          <template v-else-if="salaActual.jugadores.length < 2">
+            Mientras llega alguien más, maneja libre. Se juega desde 2 (los bots cuentan).
+          </template>
           <template v-else-if="!esAnfitrion">Esperando a que {{ jugadores[salaActual.anfitrion]?.nombre }} empiece.</template>
           <template v-else>El último carro en pantalla gana la ronda; el primero en {{ partidaActual.meta }} gana.</template>
         </p>
@@ -194,7 +216,7 @@ async function copiarCodigo() {
       <button type="button" class="btn btn--sm btn--ghost en-linea__salir" @click="emit('salir')">Salir de la sala</button>
     </aside>
 
-    <TeclasJuego class="en-linea__ayuda" />
+    <TeclasJuego v-if="!pantalla" class="en-linea__ayuda" />
   </div>
 </template>
 
@@ -236,6 +258,20 @@ async function copiarCodigo() {
   font: 400 2.4rem var(--font-title);
   letter-spacing: 0.04em;
   cursor: copy;
+}
+
+.en-linea__qr {
+  justify-self: center;
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  border-radius: 12px;
+  border: 3px solid var(--text);
+}
+
+.en-linea__codigo--fijo {
+  margin: 0;
+  cursor: default;
 }
 
 .en-linea__titulo {

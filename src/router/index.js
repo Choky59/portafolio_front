@@ -90,6 +90,13 @@ const routes = [
     },
   },
   {
+    // Proyecto #3, modo local: the phone as the controller (the room's screen shows the QR to here)
+    path: '/control',
+    name: 'control',
+    component: () => import('../views/ControlView.vue'),
+    meta: { title: 'Control · Carreras en Hermosillo', noindex: true },
+  },
+  {
     path: '/:pathMatch(.*)*',
     name: 'no-encontrado',
     component: () => import('../views/NotFoundView.vue'),
