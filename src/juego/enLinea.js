@@ -22,7 +22,7 @@ import ITEMS from './datos/items.json'
  *   el servidor tampoco mueve el carro.
  *
  * - Los demás carros: INTERPOLACIÓN CERCANA. El `seq` de cada carro es su propio reloj (un
- *   control por tick de su dueño). Se dibujan RETRASO_OTROS ticks antes de lo último recibido,
+ *   control por tick de su dueño). Se dibujan RETRASO_OTROS_S antes de lo último recibido,
  *   entre dos estados conocidos; si una instantánea se atrasa, se sigue de largo con su velocidad
  *   (2 ticks a lo más). Se probó proyectarlos al presente con su velocidad: se ven más
  *   "a tiempo", pero como la gente (y los bots) aceleran y sueltan a cada rato, la proyección
@@ -42,15 +42,18 @@ const circuitos = Object.fromEntries(
   Object.values(import.meta.glob('./datos/circuitos/*.json', { eager: true, import: 'default' })).map((c) => [c.id, c]),
 )
 
-/** La cámara y los items sueltos se dibujan este tanto de ticks en el pasado (3 ticks a 30 Hz = 100 ms) */
-const RETRASO_TICKS = 3
 /**
- * Los demás carros, un poco menos en el pasado (2 ticks ≈ 66 ms): medido con lag y variación
- * simulados, tiemblan igual de poco que con 3 y se ven más cerca de donde están
+ * La cámara y los items sueltos se dibujan este tanto en el pasado (s). En segundos y no en ticks:
+ * el servidor puede correr a cualquier tickHz (60 por defecto) y esto se ve igual
  */
-const RETRASO_OTROS = 2
-/** Si una instantánea se atrasa, hasta cuántos ticks se sigue de largo con la última velocidad */
-const MAX_DE_LARGO = 2
+const RETRASO_S = 0.1
+/**
+ * Los demás carros, un poco menos en el pasado (66 ms): medido con lag y variación simulados,
+ * tiemblan igual de poco que con 100 ms y se ven más cerca de donde están
+ */
+const RETRASO_OTROS_S = 0.066
+/** Si una instantánea se atrasa, hasta cuánto tiempo (s) se sigue de largo con la última velocidad */
+const MAX_DE_LARGO_S = 0.066
 const MAX_HISTORIAL = 60
 /** Si la predicción se equivocó por más que esto (un choque fuerte, reaparecer), se brinca sin suavizar */
 const MAX_CORRECCION = 8
@@ -348,20 +351,20 @@ export function crearJuegoEnLinea(
         }
         break
       case 'atropello':
-        // Like the meteor: what's loose is drawn RETRASO_TICKS in the past
+        // Like the meteor: what's loose is drawn RETRASO_S in the past
         setTimeout(() => {
           if (destruido) return
           escena.atropellar(evento)
           sonido.efecto('atropello', evento)
-        }, RETRASO_TICKS * tick * 1000)
+        }, RETRASO_S * 1000)
         break
       case 'impacto':
-        // Lo suelto se dibuja RETRASO_TICKS en el pasado: el golpe espera a que la roca llegue al piso
+        // Lo suelto se dibuja RETRASO_S en el pasado: el golpe espera a que la roca llegue al piso
         setTimeout(() => {
           if (destruido) return
           escena.explotar(evento.x, evento.y)
           sonido.efecto('impacto', evento)
-        }, RETRASO_TICKS * tick * 1000)
+        }, RETRASO_S * 1000)
         break
     }
     alEvento?.(evento)
@@ -370,14 +373,14 @@ export function crearJuegoEnLinea(
   /**
    * Dónde dibujar a otro carro en el tick `t` de su reloj: entre los dos estados que lo rodean.
    * Si su instantánea se atrasó y `t` ya pasó lo último recibido, sigue de largo con su velocidad
-   * (MAX_DE_LARGO ticks a lo más) en vez de quedarse congelado y luego brincar.
+   * (MAX_DE_LARGO_S a lo más) en vez de quedarse congelado y luego brincar.
    */
   function otroEn(linea, t) {
     const ultimo = linea.historial.at(-1)
     if (t <= ultimo.t) return valorEn(linea, t, mezclarCarro)
     const v = ultimo.valor
     if (!FASES_CON_MANEJO.includes(fase) || !v.vivo) return v
-    const s = Math.min(MAX_DE_LARGO, t - ultimo.t) * tick
+    const s = Math.min(MAX_DE_LARGO_S / tick, t - ultimo.t) * tick
     return { ...v, x: v.x + v.vx * s, y: v.y + v.vy * s, angulo: v.angulo + v.w * s }
   }
 
@@ -474,7 +477,7 @@ export function crearJuegoEnLinea(
     for (const [id, otro] of otros) {
       const linea = otro.linea
       if (!linea.historial.length) continue
-      const visual = otroEn(linea, local + linea.desfase - RETRASO_OTROS)
+      const visual = otroEn(linea, local + linea.desfase - RETRASO_OTROS_S / tick)
       if (visual.vivo) estados.push({ id, estado: visual })
     }
 
@@ -498,7 +501,7 @@ export function crearJuegoEnLinea(
     if (debug) window.__juegoEstados = estados.map(({ id, estado }) => ({ id, x: estado.x, y: estado.y, angulo: estado.angulo }))
 
     // Cámara compartida e items sueltos del servidor, un poco en el pasado (suaves)
-    const delServidor = mundo.historial.length ? valorEn(mundo, local + mundo.desfase - RETRASO_TICKS, mezclarMundo) : null
+    const delServidor = mundo.historial.length ? valorEn(mundo, local + mundo.desfase - RETRASO_S / tick, mezclarMundo) : null
     escena.ponerEntidades(delServidor?.entidades ?? [])
 
     // Los nombres: completos en la cuenta y los primeros segundos de carrera, luego se van (ease out)

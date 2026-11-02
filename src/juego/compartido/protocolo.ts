@@ -27,6 +27,22 @@ export const EVENTOS = {
   empezar: "partida:empezar",
   /** anfitrión → servidor, con respuesta: { cantidad } de bots en la sala (0 los quita) */
   bots: "sala:bots",
+  /**
+   * cliente → servidor, con respuesta: { listo } en la sala de espera o en los resultados. Todos
+   * ven quién está listo; el anfitrión empieza (`empezar`) cuando lo están
+   */
+  listo: "sala:listo",
+  /**
+   * cliente → servidor, con respuesta, en la sala de espera o en los resultados: { color } cambia
+   * el color propio (si está libre); solo el anfitrión: { circuito } cambia el mapa de la sala
+   * (todos vuelven a la sala de espera en el mapa nuevo y a nadie le queda el "listo") y { meta }
+   * las victorias para ganar la partida (una de VICTORIAS)
+   */
+  ajustes: "sala:ajustes",
+  /** anfitrión → servidor, con respuesta: { id } saca de la sala a ese jugador (persona o bot) */
+  expulsar: "sala:expulsar",
+  /** servidor → al que sacaron de la sala */
+  expulsado: "sala:expulsado",
   /** espectador → servidor, con respuesta: { x, y } donde cae su meteorito */
   meteorito: "partida:meteorito",
   /** cliente → servidor, con respuesta: las salas a las que uno se puede unir (SalaAbierta[]) */
@@ -57,6 +73,9 @@ export const EVENTOS = {
  *   resultados alguien llegó a la meta de puntos
  */
 export const FASES = ["espera", "cuenta", "carrera", "ronda-fin", "resultados"] as const;
+
+/** Las victorias (puntos) para ganar una partida que el anfitrión puede escoger */
+export const VICTORIAS = [1, 3, 5, 7, 10] as const;
 export type Fase = (typeof FASES)[number];
 
 /** En estas fases los carros se mueven (y el navegador predice el propio) */
@@ -128,6 +147,8 @@ export interface JugadorSala {
   color: string;
   /** Lo maneja el servidor */
   bot?: boolean;
+  /** Ya está listo para la siguiente partida (las personas; los bots siempre lo están) */
+  listo?: boolean;
 }
 
 export interface EstadoSala {
@@ -195,10 +216,19 @@ export interface Instantanea {
   cc: number[];
 }
 
+/**
+ * Redondeo para mandar por la red: milímetros y diezmilésimas de radián. Un número así ocupa
+ * ~8 caracteres en el JSON en vez de ~18, y la instantánea cabe en un solo paquete. El error
+ * (medio milímetro) queda muy por debajo de lo que la predicción del navegador corrige.
+ */
+export const red3 = (n: number): number => Math.round(n * 1000) / 1000;
+export const red4 = (n: number): number => Math.round(n * 10000) / 10000;
+
 export function empacarCarro(id: string, c: EstadoCarro, seq: number, vivo: boolean, item: number): CarroRed {
   return [
-    id, c.x, c.y, c.angulo, c.vx, c.vy, c.w, c.derrape, c.suelo === "tierra" ? 1 : 0, c.indice, seq, vivo ? 1 : 0,
-    c.aturdido, c.resbalon, c.lento, c.turbo, item, c.trompo, c.rezago, c.z, c.vz, c.rampa,
+    id, red3(c.x), red3(c.y), red4(c.angulo), red3(c.vx), red3(c.vy), red4(c.w), red3(c.derrape),
+    c.suelo === "tierra" ? 1 : 0, c.indice, seq, vivo ? 1 : 0,
+    c.aturdido, c.resbalon, c.lento, c.turbo, item, c.trompo, c.rezago, red3(c.z), red3(c.vz), c.rampa,
   ];
 }
 
