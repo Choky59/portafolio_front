@@ -1,7 +1,9 @@
 /**
  * Fills the Content-Security-Policy placeholders in firebase.json before a deploy:
  *   https://TU-API.herokuapp.com  -> origin of VITE_API_URL (required)
- *   wss://TU-API.herokuapp.com    -> the same host over WebSocket (the game's Socket.IO)
+ *   wss://TU-API.herokuapp.com    -> the same host over WebSocket (the game's Socket.IO), plus
+ *                                    VITE_JUEGO_URL (optional: the game server close to the
+ *                                    players) over https:// and wss://
  *   https://TU-CDN.example.com    -> CDN_ORIGINS, space/comma separated (optional; removed if empty)
  *
  * Runs in CI on a fresh checkout. Locally:  VITE_API_URL=... node scripts/preparar-firebase.mjs
@@ -31,6 +33,11 @@ if (!apiUrl) {
 }
 
 const apiOrigin = origin(apiUrl, 'VITE_API_URL')
+const juegoUrl = (process.env.VITE_JUEGO_URL || '').trim()
+const juegoOrigin = juegoUrl ? origin(juegoUrl, 'VITE_JUEGO_URL') : null
+/** What the game may connect to: the API's host over WebSocket and, if set, the game server */
+const conexionesJuego = [apiOrigin.replace(/^https:/, 'wss:')]
+if (juegoOrigin) conexionesJuego.push(juegoOrigin, juegoOrigin.replace(/^https:/, 'wss:'))
 const cdnOrigins = (process.env.CDN_ORIGINS || '')
   .split(/[\s,]+/)
   .filter(Boolean)
@@ -50,7 +57,7 @@ for (const regla of config.hosting.headers) {
 
     header.value = header.value
       .replaceAll(API_PLACEHOLDER, apiOrigin)
-      .replaceAll(WS_PLACEHOLDER, apiOrigin.replace(/^https:/, 'wss:'))
+      .replaceAll(WS_PLACEHOLDER, conexionesJuego.join(' '))
       .replaceAll(CDN_PLACEHOLDER, cdnOrigins.join(' '))
       .replace(/ {2,}/g, ' ')
       .replace(/ ;/g, ';')

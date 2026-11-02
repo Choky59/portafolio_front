@@ -1,8 +1,9 @@
 import { io } from 'socket.io-client'
 
 /**
- * Connection to the game server (Socket.IO namespace /juego, on the same backend as the API).
- * In dev VITE_API_URL is empty and Vite proxies /socket.io to the backend.
+ * Connection to the game server (Socket.IO namespace /juego). VITE_JUEGO_URL: a game server of its
+ * own, close to the players (portafolio_back/deploy/juego); without it, the one on the same
+ * backend as the API (VITE_API_URL). In dev both are empty and Vite proxies /socket.io.
  *
  * To try the game as if the server were far away (page URL):
  *   ?lag=150      round trip in ms, half each way
@@ -10,7 +11,7 @@ import { io } from 'socket.io-client'
  *                 (TCP never reorders, so neither does the simulation)
  */
 export function crearConexion({ lag = 0, jitter = 0 } = {}) {
-  const base = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
+  const base = (import.meta.env.VITE_JUEGO_URL || import.meta.env.VITE_API_URL || '').replace(/\/+$/, '')
   const socket = io(`${base}/juego`, { transports: ['websocket'], reconnection: false })
 
   /**
