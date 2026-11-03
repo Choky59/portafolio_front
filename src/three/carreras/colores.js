@@ -1,4 +1,5 @@
 /**
+ * Colores del mundo de Edge Racers, para la portada 3D del Proyecto #3.
  * The game world's colors. They don't follow the site's light/dark theme: the map is
  * desert in daylight either way.
  */
@@ -18,13 +19,4 @@ export const COLORES = {
   sombra: 'rgba(34, 23, 15, 0.28)',
   polvo: '#C9AB74',
   humo: '#E8E2D4',
-}
-
-// Car colors are part of the protocol (the server validates them): one list for both sides
-import { COLORES as COLORES_CARRO } from '../compartido/protocolo'
-export { COLORES_CARRO }
-
-/** Hex color of a car color id */
-export function colorCarro(id) {
-  return (COLORES_CARRO.find((c) => c.id === id) ?? COLORES_CARRO[0]).color
 }

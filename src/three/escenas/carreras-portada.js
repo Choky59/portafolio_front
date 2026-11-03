@@ -1,9 +1,9 @@
 import { acercar, rng } from '../piezas.js'
-import { blob, brush, lienzo } from '../../juego/pincel.js'
-import { COLORES } from '../../juego/render/colores.js'
-import { crearCarro3D, ponerCarro } from '../../juego/render3d/carro.js'
-import { DECORACION } from '../../juego/render3d/decoracion.js'
-import { crearEfectos3D } from '../../juego/render3d/efectos.js'
+import { blob, brush, lienzo } from '../carreras/pincel.js'
+import { COLORES } from '../carreras/colores.js'
+import { crearCarro3D, ponerCarro } from '../carreras/carro.js'
+import { DECORACION } from '../carreras/decoracion.js'
+import { crearEfectos3D } from '../carreras/efectos.js'
 
 /**
  * Cover of Proyecto #3: a little car drifting around a roundabout in front of the

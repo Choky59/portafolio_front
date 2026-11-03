@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { COLORES } from '../render/colores.js'
+import { COLORES } from './colores.js'
 import { DECORACION } from './decoracion.js'
 import { pieza } from './materiales.js'
 

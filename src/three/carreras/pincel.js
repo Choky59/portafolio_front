@@ -1,4 +1,4 @@
-import { rng } from '../three/piezas.js'
+import { rng } from '../piezas.js'
 
 /**
  * Brush engine: the brand's hand-drawn look on a 2D canvas.

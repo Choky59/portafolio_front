@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { COLORES } from '../render/colores.js'
+import { COLORES } from './colores.js'
 import { toon } from './materiales.js'
 
 /**

@@ -1,6 +1,6 @@
 import * as THREE from 'three'
-import { crearSaguaro } from '../../three/piezas.js'
-import { COLORES } from '../render/colores.js'
+import { crearSaguaro } from '../piezas.js'
+import { COLORES } from './colores.js'
 import { conContorno, pieza, toon } from './materiales.js'
 
 /**

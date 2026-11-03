@@ -90,7 +90,7 @@ const routes = [
     },
   },
   {
-    // Proyecto #3, modo local: the phone as the controller (the room's screen shows the QR to here)
+    // Proyecto #3: el control del modo local vivía aquí; ahora la ruta manda a Edge Racers
     path: '/control',
     name: 'control',
     component: () => import('../views/ControlView.vue'),
@@ -102,16 +102,6 @@ const routes = [
     component: () => import('../views/NotFoundView.vue'),
   },
 ]
-
-// Proyecto #3 test bench while it's being built; not part of the production build
-if (import.meta.env.DEV) {
-  routes.splice(-1, 0, {
-    path: '/laboratorio/carreras',
-    name: 'laboratorio-carreras',
-    component: () => import('../views/LaboratorioCarrerasView.vue'),
-    meta: { title: 'Laboratorio · Carreras', noindex: true },
-  })
-}
 
 export const router = createRouter({
   history: createWebHistory(),

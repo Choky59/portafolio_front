@@ -5,6 +5,7 @@ import Retos from '../../components/secciones/Retos.vue'
 import SerieVideos from '../../components/proyecto/SerieVideos.vue'
 import { dashboards } from '../../components/dashboards'
 import { juegos } from '../../components/juegos'
+import JugarJuego from '../../components/juegos/JugarJuego.vue'
 import { analisis, analisisEnResumen, extractoResumen } from '../../components/analisis'
 import { useHeadSeccion, useProyecto } from '../../composables/useProyecto'
 
@@ -26,7 +27,7 @@ const hayProblemaSolucion = computed(
 <template>
   <section v-if="juego" class="bloque" aria-labelledby="r-juego">
     <h2 id="r-juego" class="bloque__titulo">Juega</h2>
-    <component :is="juego" />
+    <JugarJuego :juego="juego" />
   </section>
 
   <component :is="analisisArriba" v-if="analisisArriba" class="bloque" />

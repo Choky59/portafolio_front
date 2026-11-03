@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { COLORES } from '../render/colores.js'
+import { COLORES } from './colores.js'
 
 /**
  * The brand look in 3D: flat toon shading in a few light bands and an ink outline around
