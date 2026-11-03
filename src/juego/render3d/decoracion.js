@@ -304,6 +304,59 @@ export const DECORACION = {
     return g
   },
 
+  /** Reeds at the water's edge: a clump of tall green blades, some with a brown cattail on top */
+  juncos(escala, random) {
+    const g = new THREE.Group()
+    for (let i = 0; i < 7; i++) {
+      const alto = 1.2 + random() * 1
+      const a = random() * Math.PI * 2
+      const r = random() * 0.45
+      const hoja = en(g, new THREE.CylinderGeometry(0.03, 0.06, alto, 4).translate(0, alto / 2, 0), '#5E8F4E', Math.cos(a) * r, 0, Math.sin(a) * r, { grosor: 0.015 })
+      hoja.rotation.set((random() - 0.5) * 0.3, 0, (random() - 0.5) * 0.3)
+      if (random() < 0.5) en(hoja, new THREE.CylinderGeometry(0.07, 0.07, 0.3, 6), '#7A5132', 0, alto, 0, { grosor: 0.015 })
+    }
+    g.scale.setScalar(escala)
+    return g
+  },
+
+  /** A camel resting on its knees (faces +x): body, hump, long neck and head */
+  camello(escala) {
+    const g = new THREE.Group()
+    const pelo = '#C9975A'
+    en(g, new THREE.SphereGeometry(1, 12, 8).scale(1.4, 0.7, 0.75), pelo, 0, 0.75, 0, { grosor: 0.05 })
+    en(g, new THREE.SphereGeometry(0.6, 10, 8).scale(1, 0.9, 0.9), pelo, -0.1, 1.45, 0, { grosor: 0.04 }) // hump
+    const cuello = en(g, new THREE.CylinderGeometry(0.2, 0.28, 1.3, 8).translate(0, 0.65, 0), pelo, 1.15, 0.9, 0, { grosor: 0.04 })
+    cuello.rotation.z = -0.55
+    en(g, new THREE.BoxGeometry(0.7, 0.35, 0.35), pelo, 1.95, 2.0, 0, { grosor: 0.03 }) // head
+    for (const z of [-0.12, 0.12]) en(g, new THREE.BoxGeometry(0.1, 0.18, 0.08), '#A87B47', 1.75, 2.22, z, { grosor: 0.015 }) // ears
+    // A saddle blanket in bright colors
+    en(g, new THREE.BoxGeometry(0.9, 0.06, 1.55), '#E4572E', -0.1, 1.33, 0, { grosor: 0.02, sombra: false })
+    en(g, new THREE.BoxGeometry(0.92, 0.07, 0.3), '#F6C445', -0.1, 1.34, 0, { grosor: 0.01, sombra: false })
+    g.scale.setScalar(escala)
+    return g
+  },
+
+  /** A desert tent: striped cloth on posts, open at the front (+z), with a rug outside */
+  carpa(escala) {
+    const g = new THREE.Group()
+    for (const [x, z] of [[-2, -1.5], [2, -1.5], [-2, 1.5], [2, 1.5]]) en(g, new THREE.CylinderGeometry(0.08, 0.08, 2.4, 5), '#8A6A45', x, 1.2, z, { grosor: 0.02 })
+    // Roof: two slopes meeting at a ridge, in stripes
+    for (const lado of [-1, 1]) {
+      const techo = en(g, new THREE.BoxGeometry(4.6, 0.08, 2), '#F1E6CC', 0, 2.75, lado * 0.85, { grosor: 0.03 })
+      techo.rotation.x = lado * 0.42
+      for (const x of [-1.6, 0, 1.6]) {
+        const franja = en(g, new THREE.BoxGeometry(0.6, 0.09, 2.02), '#B5442A', x, 2.75, lado * 0.85, { grosor: 0.01, sombra: false })
+        franja.rotation.x = lado * 0.42
+      }
+    }
+    // The back wall and the rug in front of the opening
+    en(g, new THREE.BoxGeometry(4.2, 2.2, 0.06), '#E9D7B4', 0, 1.1, -1.55, { grosor: 0.02 })
+    en(g, new THREE.BoxGeometry(2.6, 0.04, 1.6), '#9C3B2A', 0, 0.02, 2.4, { grosor: 0.01, sombra: false })
+    en(g, new THREE.BoxGeometry(2.2, 0.05, 1.2), '#E2A84B', 0, 0.03, 2.4, { grosor: 0.01, sombra: false })
+    g.scale.setScalar(escala)
+    return g
+  },
+
   /** Fallback for a tipo nobody has modeled yet: a magenta box, so it shows up while building */
   desconocido(escala) {
     const g = new THREE.Group()

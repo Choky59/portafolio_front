@@ -248,6 +248,26 @@ function dibujarAgua(g, circuito) {
 }
 
 const ESTILOS_ZONA = {
+  /** The oasis shore: green grass with darker tufts and a few little flowers */
+  pasto(g, zona, seed) {
+    const random = rng(seed)
+    fillShape(g, zona.poligono, { relleno: '#94B562', contorno: null, paso: 3, temblor: 0.5, seed })
+    g.save()
+    g.beginPath()
+    trazar(g, zona.poligono, true)
+    g.clip('evenodd')
+    const xs = zona.poligono.map((p) => p[0])
+    const ys = zona.poligono.map((p) => p[1])
+    for (let k = 0; k < 900; k++) {
+      const x = Math.min(...xs) + random() * (Math.max(...xs) - Math.min(...xs))
+      const y = Math.min(...ys) + random() * (Math.max(...ys) - Math.min(...ys))
+      const r = random()
+      g.fillStyle = r < 0.6 ? 'rgba(70,110,50,0.45)' : r < 0.95 ? '#B4CF7C' : ['#F6C445', '#F07FB0', '#F1E6CC'][k % 3]
+      g.fillRect(x, y, r < 0.95 ? 0.5 : 0.35, r < 0.95 ? 0.5 : 0.35)
+    }
+    g.restore()
+  },
+
   /** San Carlos beach: pale sand with shells and the odd towel */
   playa(g, zona, seed) {
     const random = rng(seed)
