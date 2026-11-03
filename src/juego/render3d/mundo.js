@@ -36,19 +36,22 @@ export function crearMundo(pista, renderer) {
   mundo.add(crearCerca(limites, altura))
   for (const agua of circuito.agua ?? []) mundo.add(crearAgua(agua))
   for (const rampa of circuito.rampas ?? []) mundo.add(crearRampa(rampa, altura))
+  /** What floats (boats, ducks, swimmers): the scene rocks it a little every frame */
+  mundo.userData.flotantes = []
   circuito.decoracion.forEach((d, i) => {
     const crear = DECORACION[d.tipo] ?? DECORACION.desconocido
     const objeto = crear(d.escala ?? 1, rng((i + 1) * 7))
     // Boats float on the water's surface; everything else stands on the ground
     objeto.position.set(d.x, d.flota ? NIVEL_AGUA : altura(d.x, d.y), d.y)
     objeto.rotation.y = d.rotacion ?? (DECORACION_ORIENTADA.has(d.tipo) ? 0 : rng(i + 3)() * Math.PI * 2)
+    if (d.flota) mundo.userData.flotantes.push(objeto)
     mundo.add(objeto)
   })
   return mundo
 }
 
 /** Props whose front matters keep rotation 0 unless the JSON says otherwise */
-const DECORACION_ORIENTADA = new Set(['catedral', 'kiosco', 'mirador', 'camion', 'puesto-dogos', 'senal', 'velero', 'lancha'])
+const DECORACION_ORIENTADA = new Set(['catedral', 'kiosco', 'mirador', 'camion', 'puesto-dogos', 'senal', 'velero', 'lancha', 'kayak', 'bote'])
 
 /** The brush-drawn ground as a texture on a mesh the size of the world, lifted by the hills */
 function crearSuelo(limites, pista, renderer, altura) {

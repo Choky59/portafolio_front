@@ -19,6 +19,9 @@ function en(grupo, geo, color, x, y, z, opciones) {
 
 const BLANCO = '#F3EDE0'
 const CANTERA = '#E2D3B8'
+/** Skin tones and swimsuits of the people in the water (the same tones as the carne asada's people) */
+const PIELES = ['#C68B59', '#A8714A', '#8D5A3B', '#E0AC7E']
+const TRAJES = ['#E4572E', '#4F8FE8', '#F6C445', '#9C6ADE', '#F07FB0']
 
 export const DECORACION = {
   saguaro(escala, random) {
@@ -216,6 +219,87 @@ export const DECORACION = {
     en(g, new THREE.BoxGeometry(5, 0.7, 1.7).translate(0, 0.2, 0), colores[Math.floor(random() * colores.length)], 0, 0, 0, { grosor: 0.05 })
     en(g, new THREE.BoxGeometry(4.6, 0.12, 1.4), BLANCO, 0, 0.58, 0, { grosor: 0.02, sombra: false })
     en(g, new THREE.BoxGeometry(0.5, 0.8, 0.4), COLORES.tinta, -2.6, 0.6, 0, { grosor: 0.03 }) // outboard
+    g.scale.setScalar(escala)
+    return g
+  },
+
+  /** A duck on the water (faces +x): brown body, green head, orange beak. `escala` < 0.8: a yellow duckling */
+  pato(escala) {
+    const g = new THREE.Group()
+    const patito = escala < 0.8
+    en(g, new THREE.SphereGeometry(0.42, 10, 8).scale(1.3, 0.75, 0.95), patito ? '#E8C85A' : '#8A6A45', 0, 0.18, 0, { grosor: 0.04 })
+    en(g, new THREE.SphereGeometry(0.25, 10, 8), patito ? '#E8C85A' : '#3F7A4F', 0.42, 0.62, 0, { grosor: 0.03 })
+    en(g, new THREE.ConeGeometry(0.1, 0.26, 6).rotateZ(-Math.PI / 2), '#E4772E', 0.72, 0.58, 0, { grosor: 0.02, sombra: false })
+    en(g, new THREE.ConeGeometry(0.14, 0.3, 4).rotateZ(Math.PI / 2.6), patito ? '#E8C85A' : '#6E5236', -0.55, 0.32, 0, { grosor: 0.02 }) // tail
+    g.scale.setScalar(escala)
+    return g
+  },
+
+  /** A kayak with its paddler (long along +x) */
+  kayak(escala, random) {
+    const g = new THREE.Group()
+    const colores = ['#F6C445', '#E4572E', '#7FB7A4', '#4F8FE8']
+    const piel = PIELES[Math.floor(random() * PIELES.length)]
+    en(g, new THREE.SphereGeometry(1, 12, 8).scale(2.1, 0.32, 0.42), colores[Math.floor(random() * colores.length)], 0, 0.1, 0, { grosor: 0.04 })
+    en(g, new THREE.CylinderGeometry(0.3, 0.3, 0.06, 10), COLORES.tinta, 0, 0.36, 0, { grosor: 0.02, sombra: false }) // cockpit
+    en(g, new THREE.BoxGeometry(0.3, 0.55, 0.42), '#E4572E', 0, 0.66, 0, { grosor: 0.03 }) // life vest
+    en(g, new THREE.SphereGeometry(0.17, 8, 6), piel, 0.02, 1.08, 0, { grosor: 0.025 })
+    // The paddle, across, tilted mid-stroke, a blade at each end
+    const remo = new THREE.Group()
+    en(remo, new THREE.CylinderGeometry(0.03, 0.03, 2.2, 5).rotateX(Math.PI / 2), '#8A6A45', 0, 0, 0, { grosor: 0.01 })
+    for (const z of [-1.1, 1.1]) en(remo, new THREE.BoxGeometry(0.22, 0.04, 0.4), BLANCO, 0, 0, z, { grosor: 0.015 })
+    remo.position.set(0.2, 0.8, 0)
+    remo.rotation.x = 0.45
+    g.add(remo)
+    g.scale.setScalar(escala)
+    return g
+  },
+
+  /** Wooden rowboat with two benches and its oars resting on the sides (long along +x) */
+  bote(escala) {
+    const g = new THREE.Group()
+    const madera = '#A9744A'
+    en(g, new THREE.BoxGeometry(3.4, 0.6, 1.4).translate(0, 0.25, 0), madera, 0, 0, 0, { grosor: 0.05 })
+    en(g, new THREE.ConeGeometry(0.7, 1, 4).rotateZ(-Math.PI / 2).rotateX(Math.PI / 4).scale(1, 0.6, 1), madera, 2.15, 0.25, 0, { grosor: 0.04 }) // bow
+    en(g, new THREE.BoxGeometry(3.2, 0.1, 1.2), '#7A5132', 0, 0.5, 0, { grosor: 0.02, sombra: false })
+    for (const x of [-0.7, 0.6]) en(g, new THREE.BoxGeometry(0.3, 0.08, 1.3), '#C99A6A', x, 0.56, 0, { grosor: 0.015 })
+    for (const z of [-1, 1]) {
+      const remo = en(g, new THREE.BoxGeometry(2.4, 0.06, 0.14), '#8A6A45', -0.1, 0.62, z * 0.95, { grosor: 0.015 })
+      remo.rotation.y = z * 0.25
+    }
+    g.scale.setScalar(escala)
+    return g
+  },
+
+  /** Someone swimming: head with a bright swim cap, shoulders at the surface, an arm up mid-stroke (faces +x) */
+  nadador(escala, random) {
+    const g = new THREE.Group()
+    const piel = PIELES[Math.floor(random() * PIELES.length)]
+    const gorra = ['#E4572E', '#4F8FE8', '#F6C445', '#F07FB0', '#7FB7A4'][Math.floor(random() * 5)]
+    en(g, new THREE.SphereGeometry(0.42, 10, 6).scale(1.25, 0.32, 1.05), piel, -0.2, 0.04, 0, { grosor: 0.03 }) // shoulders
+    en(g, new THREE.SphereGeometry(0.27, 12, 10), piel, 0.28, 0.3, 0, { grosor: 0.03 })
+    en(g, new THREE.SphereGeometry(0.29, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2.2), gorra, 0.26, 0.34, 0, { grosor: 0.025 })
+    // One arm up out of the water, mid-stroke; the other hand just ahead at the surface
+    const brazo = en(g, new THREE.BoxGeometry(0.15, 0.85, 0.15).translate(0, 0.42, 0), piel, -0.15, 0.08, 0.42, { grosor: 0.02 })
+    brazo.rotation.z = -0.35
+    en(g, new THREE.BoxGeometry(0.18, 0.1, 0.18), piel, 0.75, 0.04, -0.3, { grosor: 0.015, sombra: false })
+    // Splash around them
+    en(g, new THREE.TorusGeometry(0.75, 0.07, 4, 18).rotateX(Math.PI / 2), '#F4FBFC', 0, 0.02, 0, { grosor: 0.01, sombra: false })
+    g.scale.setScalar(escala * 1.2)
+    return g
+  },
+
+  /** An inflatable ring (a "dona") with someone sitting in it */
+  flotador(escala, random) {
+    const g = new THREE.Group()
+    const colores = ['#F07FB0', '#F6C445', '#7FB7A4', '#E4572E']
+    const piel = PIELES[Math.floor(random() * PIELES.length)]
+    en(g, new THREE.TorusGeometry(0.7, 0.28, 8, 18).rotateX(Math.PI / 2), colores[Math.floor(random() * colores.length)], 0, 0.15, 0, { grosor: 0.04 })
+    en(g, new THREE.TorusGeometry(0.7, 0.29, 8, 18, Math.PI / 3).rotateX(Math.PI / 2), BLANCO, 0, 0.15, 0, { grosor: 0.01, sombra: false }) // stripe
+    en(g, new THREE.BoxGeometry(0.34, 0.5, 0.44), TRAJES[Math.floor(random() * TRAJES.length)], 0, 0.45, 0, { grosor: 0.03 })
+    en(g, new THREE.SphereGeometry(0.17, 8, 6), piel, 0, 0.85, 0, { grosor: 0.025 })
+    // Arms resting on the ring
+    for (const z of [-0.36, 0.36]) en(g, new THREE.BoxGeometry(0.12, 0.12, 0.42), piel, 0.05, 0.42, z * 1.3, { grosor: 0.015 })
     g.scale.setScalar(escala)
     return g
   },
