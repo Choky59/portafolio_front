@@ -68,6 +68,17 @@ const estadoHz = computed(() => datos.value?.servidorActual?.estadoHz ?? 30)
 const resumenDe = (j) => (vista.value === 'ahora' && j.ahora ? j.ahora : j.total)
 const banderasDe = (j) => (vista.value === 'ahora' && j.ahora ? j.banderasAhora : j.banderas)
 
+/** Arranque de ronda (primeros 5 s) contra el resto de la carrera: [etiqueta, valor de un resumen] */
+const COMPARAR_TRAMOS = [
+  ['Correcciones', (r) => v(r.correccionesPorS, ' /s')],
+  ['Correcciones duras', (r) => v(r.correccionesDurasPorMin, ' /min')],
+  ['Error de choque p95', (r) => v(r.errorChoqueP95, ' m')],
+  ['Otros carros que saltan', (r) => v(r.brincosOtrosPorMin, ' /min')],
+  ['Hueco de estados p95', (r) => v(r.huecoP95, ' ms')],
+  ['Cámara quieta', (r) => v(r.camaraQuietaMsPorMin, ' ms/min')],
+  ['Ping p95', (r) => v(r.rttP95, ' ms')],
+]
+
 const v = (x, unidad = '') => (x === null || x === undefined ? '—' : `${x}${unidad}`)
 
 /**
@@ -264,6 +275,22 @@ function descargar() {
             </li>
             <li v-if="!banderasDe(j).length" class="bandera bandera--bien">Sin problemas en este periodo.</li>
           </ul>
+
+          <template v-if="j.porTramo?.arranque?.muestras">
+            <h4 class="columna__subtitulo">Arranque de ronda (primeros 5 s) vs resto</h4>
+            <table class="numeros tramos">
+              <thead>
+                <tr><th></th><th>Arranque</th><th>Resto</th></tr>
+              </thead>
+              <tbody>
+                <tr v-for="[etiqueta, valor] in COMPARAR_TRAMOS" :key="etiqueta">
+                  <td>{{ etiqueta }}</td>
+                  <td class="numeros__valor">{{ valor(j.porTramo.arranque) }}</td>
+                  <td class="numeros__valor">{{ valor(j.porTramo.resto) }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </template>
 
           <table class="numeros">
             <tbody>
@@ -491,6 +518,18 @@ function descargar() {
   display: grid;
   gap: 3px;
   font-size: 0.8rem;
+}
+
+.tramos {
+  margin-bottom: 8px;
+}
+
+.tramos th {
+  text-align: right;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-weight: 600;
+  padding-bottom: 4px;
 }
 
 .columna__muestras {
