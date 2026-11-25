@@ -84,6 +84,9 @@ function filas(j) {
     ['Cuadros de más de 50 ms', v(r.cuadrosLargosPct, ' %'), (r.cuadrosLargosPct ?? 0) > 2],
     ['Calidad', r.perfil ? `${r.perfil} (nivel ${r.nivelCalidad})` : '— (compu)', false],
     ['Estuvo en segundo plano', r.oculto ? 'sí' : 'no', r.oculto],
+    { grupo: 'Canal' },
+    ['Canal rápido (WebRTC) abierto', v(r.canalRapidoPct, ' % del tiempo'), (r.canalRapidoPct ?? 100) < 50],
+    ['Estados que llegaron por el canal rápido', v(r.estadosPorCanalPct, ' %'), false],
     { grupo: 'Bajada: estados del servidor (cliente)' },
     ['Recibidos', v(r.estadosPct, ' %'), (r.estadosPct ?? 100) < 90],
     [`Hueco p95 / máx. (esperado ${esperado} ms)`, `${v(r.huecoP95, ' ms')} / ${v(r.huecoMax, ' ms')}`, (r.huecoP95 ?? 0) > esperado * 2],
@@ -104,6 +107,11 @@ function filas(j) {
     ['Otros carros que saltan', `${v(r.brincosOtrosPorMin, ' /min')} (máx. ${v(r.brincoOtrosMax, ' m')})`, (r.brincosOtrosPorMin ?? 0) > 1],
     ['Hueco de estados en esos saltos', v(r.huecoEnBrincosOtros, ' ms'), (r.huecoEnBrincosOtros ?? 0) > (1000 / estadoHz.value) * 2],
     ['Cuadros de más de 100 ms', v(r.cuadrosMuyLargosPorMin, ' /min'), (r.cuadrosMuyLargosPorMin ?? 0) > 1],
+    { grupo: 'Suavizado de lo que se dibuja (cliente)' },
+    ['Saltos escondidos', v(r.saltosAbsorbidosPorMin, ' /min'), false],
+    ['Retrocesos sin suavizar: otros carros', v(r.retrocesosOtrosPorMin, ' /min'), (r.retrocesosOtrosPorMin ?? 0) > 10],
+    ['Retrocesos sin suavizar: cámara', v(r.retrocesosCamaraPorMin, ' /min'), (r.retrocesosCamaraPorMin ?? 0) > 10],
+    ['Retrocesos de tu carro (se ven)', v(r.retrocesosPropioPorMin, ' /min'), (r.retrocesosPropioPorMin ?? 0) > 5],
     { grupo: 'Subida: sus controles (servidor)' },
     ['Controles que llegan', v(r.controlesPorS, ' /s'), false],
     ['Hueco p95 / máx.', `${v(r.controlesHuecoP95, ' ms')} / ${v(r.controlesHuecoMax, ' ms')}`, (r.controlesHuecoP95 ?? 0) > 50],
@@ -145,6 +153,15 @@ const graficas = computed(() => [
   { titulo: 'Correcciones', unidad: ' /s', puntos: puntosDe((m) => (m.cliente ? Math.round((m.cliente.correcciones / (m.cliente.ventanaMs / 1000)) * 10) / 10 : null)) },
   { titulo: 'Colchón de los otros carros', unidad: ' ms', puntos: puntosDe((m) => m.cliente?.colchonOtros ?? null) },
   { titulo: 'Colchón de la cámara', unidad: ' ms', puntos: puntosDe((m) => m.cliente?.colchonCamara ?? null) },
+  {
+    titulo: 'Retrocesos sin suavizar (otros + cámara)',
+    unidad: ' /min',
+    puntos: puntosDe((m) =>
+      m.cliente && m.cliente.retrocesosOtros !== undefined
+        ? Math.round((((m.cliente.retrocesosOtros ?? 0) + (m.cliente.retrocesosCamara ?? 0)) / (m.cliente.ventanaMs / 60000)) * 10) / 10
+        : null,
+    ),
+  },
   {
     titulo: 'Cámara sin estado nuevo',
     unidad: ' %',
