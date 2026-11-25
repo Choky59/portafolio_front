@@ -105,7 +105,8 @@ function filas(j) {
     { grupo: 'Subida: sus controles (servidor)' },
     ['Controles que llegan', v(r.controlesPorS, ' /s'), false],
     ['Hueco p95 / máx.', `${v(r.controlesHuecoP95, ' ms')} / ${v(r.controlesHuecoMax, ' ms')}`, (r.controlesHuecoP95 ?? 0) > 50],
-    ['Ticks sin control (hambre)', v(r.hambrePorS, ' /s'), (r.hambrePorS ?? 0) > 1],
+    ['Ticks cubiertos repitiendo su control', `${v(r.inventadosPorS, ' /s')} (${v(r.cubiertosPorS, ' /s')} llegaron tarde)`, false],
+    ['Ticks quieto (hueco de más de 0.2 s)', v(r.hambrePorS, ' /s'), (r.hambrePorS ?? 0) > 1],
     ['Tirados (cola llena)', v(r.tirados), (r.tirados ?? 0) > 0],
     ['Cola del socket (máx.)', v(r.bufferMax), (r.bufferMax ?? 0) > 20],
   ]
@@ -137,7 +138,8 @@ const graficas = computed(() => [
   { titulo: 'Estados recibidos', unidad: ' /s', limite: estadoHz.value, puntos: puntosDe((m) => (m.cliente ? Math.round((m.cliente.estados / (m.cliente.ventanaMs / 1000)) * 10) / 10 : null)) },
   { titulo: 'Ping p95', unidad: ' ms', limite: 150, puntos: puntosDe((m) => m.cliente?.rttP95 ?? null) },
   { titulo: 'Hueco de controles p95 (servidor)', unidad: ' ms', limite: 50, puntos: puntosDe((m) => m.servidor.huecoP95) },
-  { titulo: 'Ticks sin control (servidor)', unidad: ' /s', puntos: puntosDe((m) => Math.round((m.servidor.hambre / seg(m)) * 10) / 10) },
+  { titulo: 'Ticks cubiertos repitiendo (servidor)', unidad: ' /s', puntos: puntosDe((m) => Math.round(((m.servidor.inventados ?? 0) / seg(m)) * 10) / 10) },
+  { titulo: 'Ticks quieto (servidor)', unidad: ' /s', puntos: puntosDe((m) => Math.round((m.servidor.hambre / seg(m)) * 10) / 10) },
   { titulo: 'Correcciones', unidad: ' /s', puntos: puntosDe((m) => (m.cliente ? Math.round((m.cliente.correcciones / (m.cliente.ventanaMs / 1000)) * 10) / 10 : null)) },
   { titulo: 'Colchón de los otros carros', unidad: ' ms', puntos: puntosDe((m) => m.cliente?.colchonOtros ?? null) },
   {
@@ -211,6 +213,9 @@ function descargar() {
         {{ Math.round(presupuesto * 10) / 10 }} ms ·
         <span v-if="datos.servidor.banderas.length" class="malo">{{ datos.servidor.banderas[0].texto }}</span>
         <span v-else>va sobrado: no es el servidor</span>
+        <template v-if="datos.config?.repetirControl !== undefined">
+          · repetir control en huecos: <b>{{ datos.config.repetirControl ? 'sí' : 'no' }}</b>
+        </template>
       </p>
 
       <p v-if="!jugadores.length" class="muted">Todavía no llega ningún reporte (los manda cada jugador cada 2 s).</p>
