@@ -90,6 +90,8 @@ function filas(j) {
     ['Atraso p95', v(r.atraso, ' ms'), false],
     ['Colchón de los otros carros', v(r.colchonOtros, ' ms'), (r.colchonOtros ?? 0) > 150],
     ['Sin estado, de largo', v(r.deLargoPorS, ' /s'), (r.deLargoPorS ?? 0) > 1],
+    ['Cámara sin estado nuevo (siguió de largo)', v(r.camaraDeLargoPct, ' % de cuadros'), (r.camaraDeLargoPct ?? 0) > 5],
+    ['Cámara quieta (corte de más de 0.25 s)', v(r.camaraQuietaMsPorMin, ' ms/min'), (r.camaraQuietaMsPorMin ?? 0) > 200],
     { grupo: 'Ping y predicción (cliente)' },
     ['Ping p50 / p95 / p99', `${v(r.rttP50)} / ${v(r.rttP95)} / ${v(r.rttP99)} ms`, (r.rttP95 ?? 0) > 150],
     ['Confirmación de controles p95', v(r.confirmacionP95, ' ms'), false],
@@ -142,6 +144,12 @@ const graficas = computed(() => [
   { titulo: 'Ticks quieto (servidor)', unidad: ' /s', puntos: puntosDe((m) => Math.round((m.servidor.hambre / seg(m)) * 10) / 10) },
   { titulo: 'Correcciones', unidad: ' /s', puntos: puntosDe((m) => (m.cliente ? Math.round((m.cliente.correcciones / (m.cliente.ventanaMs / 1000)) * 10) / 10 : null)) },
   { titulo: 'Colchón de los otros carros', unidad: ' ms', puntos: puntosDe((m) => m.cliente?.colchonOtros ?? null) },
+  { titulo: 'Colchón de la cámara', unidad: ' ms', puntos: puntosDe((m) => m.cliente?.colchonCamara ?? null) },
+  {
+    titulo: 'Cámara sin estado nuevo',
+    unidad: ' %',
+    puntos: puntosDe((m) => (m.cliente && m.cliente.camaraDeLargo !== undefined && m.cliente.cuadros ? Math.round((m.cliente.camaraDeLargo / m.cliente.cuadros) * 1000) / 10 : null)),
+  },
   {
     titulo: 'Brincos (propios duros + otros)',
     unidad: ' /min',
