@@ -95,7 +95,7 @@ function filas(j) {
     ['Confirmación de controles p95', v(r.confirmacionP95, ' ms'), false],
     ['Retraso de envío p95', v(r.envioP95, ' ms'), (r.envioP95 ?? 0) > 20],
     ['Correcciones', v(r.correccionesPorS, ' /s'), (r.correccionesPorS ?? 0) > 2],
-    ['Error de choque p95', v(r.errorChoqueP95, ' m'), (r.errorChoqueP95 ?? 0) > 1],
+    ['Error de choque p95 (con carros cerca) / peor ventana', `${v(r.errorChoqueP95, ' m')} / ${v(r.errorChoqueMax, ' m')}`, (r.errorChoqueP95 ?? 0) > 1],
     { grupo: 'Brincos (cliente)' },
     ['Correcciones duras (más de 8 m)', v(r.correccionesDurasPorMin, ' /min'), (r.correccionesDurasPorMin ?? 0) > 0.5],
     ['Corrección p95 / máx.', `${v(r.correccionP95, ' m')} / ${v(r.correccionMax, ' m')}`, (r.correccionP95 ?? 0) > 1],
@@ -106,7 +106,7 @@ function filas(j) {
     ['Controles que llegan', v(r.controlesPorS, ' /s'), false],
     ['Hueco p95 / máx.', `${v(r.controlesHuecoP95, ' ms')} / ${v(r.controlesHuecoMax, ' ms')}`, (r.controlesHuecoP95 ?? 0) > 50],
     ['Ticks cubiertos repitiendo su control', `${v(r.inventadosPorS, ' /s')} (${v(r.cubiertosPorS, ' /s')} llegaron tarde)`, false],
-    ['Ticks quieto (hueco de más de 0.2 s)', v(r.hambrePorS, ' /s'), (r.hambrePorS ?? 0) > 1],
+    ['Ticks quieto (hueco de más de 0.35 s)', v(r.hambrePorS, ' /s'), (r.hambrePorS ?? 0) > 1],
     ['Tirados (cola llena)', v(r.tirados), (r.tirados ?? 0) > 0],
     ['Cola del socket (máx.)', v(r.bufferMax), (r.bufferMax ?? 0) > 20],
   ]
