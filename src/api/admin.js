@@ -15,6 +15,12 @@ export async function me(signal) {
   return res.user
 }
 
+/* Edge Racers: the game server's performance (live + last hour) */
+
+export function getEstadoJuego(signal) {
+  return api('/juego/status', { auth: true, signal })
+}
+
 /* Devices */
 
 export async function listDevices(filtros = {}, signal) {

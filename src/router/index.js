@@ -77,6 +77,13 @@ const routes = [
         component: () => import('../views/admin/AnalisisNoticiasView.vue'),
         meta: { title: 'Análisis de noticias · Panel' },
       },
+      {
+        // Edge Racers: the game server's performance while people play
+        path: 'status',
+        name: 'admin-status',
+        component: () => import('../views/admin/EstadoJuegoView.vue'),
+        meta: { title: 'Status · Panel' },
+      },
     ],
   },
   {
