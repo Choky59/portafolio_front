@@ -84,6 +84,13 @@ const routes = [
         component: () => import('../views/admin/EstadoJuegoView.vue'),
         meta: { title: 'Status · Panel' },
       },
+      {
+        // One match: each real player side by side (why one lags and another doesn't)
+        path: 'status/:partida',
+        name: 'admin-status-partida',
+        component: () => import('../views/admin/PartidaJuegoView.vue'),
+        meta: { title: 'Partida · Status · Panel' },
+      },
     ],
   },
   {

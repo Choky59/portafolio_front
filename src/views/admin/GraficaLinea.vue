@@ -2,7 +2,8 @@
 /**
  * A small line chart in SVG (no library): one or two series over time, with its latest value.
  * `puntos`: [{ t, ...valores }]; `series`: [{ clave, nombre, color }]; `limite`: a dashed line
- * (e.g. the tick budget) that marks where the values become a problem.
+ * (e.g. the tick budget) that marks where the values become a problem. A point may carry only
+ * some of the series (each player has their own times): the others skip it.
  */
 import { computed } from 'vue'
 
@@ -12,6 +13,7 @@ const props = defineProps({
   series: { type: Array, required: true },
   unidad: { type: String, default: '' },
   limite: { type: Number, default: null },
+  periodo: { type: String, default: '' },
 })
 
 const ANCHO = 300
@@ -39,7 +41,9 @@ const lineas = computed(() =>
     let corte = true
     for (const p of props.puntos) {
       const v = p[s.clave]
-      if (v === null || v === undefined) { corte = true; continue }
+      // undefined: el punto es de otra serie (cada jugador tiene sus tiempos); null: no hubo dato
+      if (v === undefined) continue
+      if (v === null) { corte = true; continue }
       d += `${corte ? 'M' : 'L'}${x(p.t).toFixed(1)},${y(v).toFixed(1)}`
       corte = false
     }
@@ -66,7 +70,7 @@ const formato = (v) => (v === null ? '—' : `${Math.round(v * 10) / 10}${props.
       <path v-for="l in lineas" :key="l.clave" :d="l.d" :stroke="l.color" fill="none" stroke-width="1.6" vector-effect="non-scaling-stroke" />
     </svg>
     <p v-else class="grafica__vacia muted">Juntando datos…</p>
-    <p class="grafica__escala muted">máx. {{ formato(maximo / 1.1) }} · última hora</p>
+    <p class="grafica__escala muted">máx. {{ formato(maximo / 1.1) }}<template v-if="periodo"> · {{ periodo }}</template></p>
   </figure>
 </template>
 
