@@ -121,8 +121,9 @@ function uptime(s) {
 
     <p class="muted estado-juego__nota">
       Solo salen las partidas que simula el servidor (las locales corren en el navegador). Todo vive en la memoria del
-      servidor del juego: las partidas en curso y las últimas 20, y se borra al reiniciarlo. Las banderas en vivo son de los
-      últimos 30 s; las de una partida terminada, de toda la partida.
+      servidor del juego; al terminar, cada partida se guarda 30 días en la base del juego (sigue aquí aunque se reinicie) y
+      desde su detalle se baja como JSON. Las banderas en vivo son de los últimos 30 s; las de una partida terminada, de toda
+      la partida.
     </p>
   </section>
 </template>

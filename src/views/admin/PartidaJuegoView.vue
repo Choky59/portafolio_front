@@ -96,6 +96,12 @@ function filas(j) {
     ['Retraso de envío p95', v(r.envioP95, ' ms'), (r.envioP95 ?? 0) > 20],
     ['Correcciones', v(r.correccionesPorS, ' /s'), (r.correccionesPorS ?? 0) > 2],
     ['Error de choque p95', v(r.errorChoqueP95, ' m'), (r.errorChoqueP95 ?? 0) > 1],
+    { grupo: 'Brincos (cliente)' },
+    ['Correcciones duras (más de 8 m)', v(r.correccionesDurasPorMin, ' /min'), (r.correccionesDurasPorMin ?? 0) > 0.5],
+    ['Corrección p95 / máx.', `${v(r.correccionP95, ' m')} / ${v(r.correccionMax, ' m')}`, (r.correccionP95 ?? 0) > 1],
+    ['Otros carros que saltan', `${v(r.brincosOtrosPorMin, ' /min')} (máx. ${v(r.brincoOtrosMax, ' m')})`, (r.brincosOtrosPorMin ?? 0) > 1],
+    ['Hueco de estados en esos saltos', v(r.huecoEnBrincosOtros, ' ms'), (r.huecoEnBrincosOtros ?? 0) > (1000 / estadoHz.value) * 2],
+    ['Cuadros de más de 100 ms', v(r.cuadrosMuyLargosPorMin, ' /min'), (r.cuadrosMuyLargosPorMin ?? 0) > 1],
     { grupo: 'Subida: sus controles (servidor)' },
     ['Controles que llegan', v(r.controlesPorS, ' /s'), false],
     ['Hueco p95 / máx.', `${v(r.controlesHuecoP95, ' ms')} / ${v(r.controlesHuecoMax, ' ms')}`, (r.controlesHuecoP95 ?? 0) > 50],
@@ -134,9 +140,46 @@ const graficas = computed(() => [
   { titulo: 'Ticks sin control (servidor)', unidad: ' /s', puntos: puntosDe((m) => Math.round((m.servidor.hambre / seg(m)) * 10) / 10) },
   { titulo: 'Correcciones', unidad: ' /s', puntos: puntosDe((m) => (m.cliente ? Math.round((m.cliente.correcciones / (m.cliente.ventanaMs / 1000)) * 10) / 10 : null)) },
   { titulo: 'Colchón de los otros carros', unidad: ' ms', puntos: puntosDe((m) => m.cliente?.colchonOtros ?? null) },
+  {
+    titulo: 'Brincos (propios duros + otros)',
+    unidad: ' /min',
+    puntos: puntosDe((m) =>
+      m.cliente && m.cliente.correccionesDuras !== undefined
+        ? Math.round((((m.cliente.correccionesDuras ?? 0) + (m.cliente.brincosOtros ?? 0)) / (m.cliente.ventanaMs / 60000)) * 10) / 10
+        : null,
+    ),
+  },
 ])
 
 const presupuesto = computed(() => 1000 / (datos.value?.servidorActual?.tickHz ?? 60))
+
+/* ------------------------------ Brincos ------------------------------ */
+
+const TEXTO_BRINCO = {
+  'propio-duro': (e) => `su carro se brincó ${e.valor} m (corrección dura)`,
+  otro: (e) => `otro carro saltó ${e.valor} m`,
+  'cuadro-largo': (e) => `un cuadro tardó ${Math.round(e.valor)} ms`,
+}
+
+/** The last jumps of a player, newest first, with their context */
+const brincosDe = (j) => [...(resumenDe(j).ultimosBrincos ?? [])].reverse().slice(0, 12)
+
+/* ---------------------------- Download ---------------------------- */
+
+/** The whole match as JSON (what the server keeps), ready to analyze */
+function descargar() {
+  const d = datos.value
+  if (!d) return
+  const fecha = new Date(d.inicio).toISOString().slice(0, 16).replace(/[:T]/g, '-')
+  const blob = new Blob([JSON.stringify(d, null, 2)], { type: 'application/json' })
+  const a = document.createElement('a')
+  a.href = URL.createObjectURL(blob)
+  a.download = `partida-${d.codigo}-${fecha}.json`
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+}
 </script>
 
 <template>
@@ -154,6 +197,9 @@ const presupuesto = computed(() => 1000 / (datos.value?.servidorActual?.tickHz ?
           <template v-if="enCurso">En curso ({{ datos.fase }}) · {{ duracion(datos.inicio) }}</template>
           <template v-else>Terminó · {{ new Date(datos.inicio).toLocaleString() }} · duró {{ duracion(datos.inicio, datos.fin) }}</template>
         </span>
+        <button type="button" class="btn btn--sm btn--ghost partida-juego__descargar" @click="descargar">
+          Descargar JSON
+        </button>
         <div v-if="enCurso" class="selector" role="group" aria-label="Periodo">
           <button type="button" class="btn btn--sm" :class="{ 'btn--ghost': vista !== 'ahora' }" @click="vista = 'ahora'">Últimos 30 s</button>
           <button type="button" class="btn btn--sm" :class="{ 'btn--ghost': vista !== 'total' }" @click="vista = 'total'">Toda la partida</button>
@@ -200,6 +246,16 @@ const presupuesto = computed(() => 1000 / (datos.value?.servidorActual?.tickHz ?
               </template>
             </tbody>
           </table>
+          <template v-if="brincosDe(j).length">
+            <h4 class="columna__subtitulo">Últimos brincos</h4>
+            <ul class="brincos">
+              <li v-for="(e, i) in brincosDe(j)" :key="i">
+                <span class="muted">{{ new Date(e.t).toLocaleTimeString() }}</span>
+                {{ TEXTO_BRINCO[e.tipo]?.(e) ?? e.tipo }}
+                <span class="muted" :class="{ malo: e.hueco > (1000 / estadoHz) * 2 }">· hueco {{ e.hueco }} ms</span>
+              </li>
+            </ul>
+          </template>
           <p class="muted columna__muestras">{{ resumenDe(j).muestras }} muestras ({{ resumenDe(j).conCliente }} con datos del cliente)</p>
         </article>
       </div>
@@ -260,7 +316,6 @@ const presupuesto = computed(() => 1000 / (datos.value?.servidorActual?.tickHz ?
 .selector {
   display: flex;
   gap: 6px;
-  margin-left: auto;
 }
 
 .servidor {
@@ -381,6 +436,31 @@ const presupuesto = computed(() => 1000 / (datos.value?.servidorActual?.tickHz ?
 .numeros__fila--mala td {
   color: var(--extremo);
   font-weight: 700;
+}
+
+.partida-juego__descargar {
+  margin-left: auto;
+}
+
+.selector .btn:first-child {
+  margin-left: 0;
+}
+
+.columna__subtitulo {
+  margin: 14px 0 6px;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.brincos {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 3px;
+  font-size: 0.8rem;
 }
 
 .columna__muestras {

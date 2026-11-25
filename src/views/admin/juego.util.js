@@ -43,6 +43,7 @@ export const NOMBRES_BANDERA = {
   subida: 'Subida',
   rtt: 'Ping',
   prediccion: 'Predicción',
+  brincos: 'Brincos',
   servidor: 'Servidor',
   sinDatos: 'Sin datos',
 }
