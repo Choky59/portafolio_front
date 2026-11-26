@@ -114,6 +114,7 @@ function filas(j) {
     ['Error de choque p95 (con carros cerca) / peor ventana', `${v(r.errorChoqueP95, ' m')} / ${v(r.errorChoqueMax, ' m')}`, (r.errorChoqueP95 ?? 0) > 1],
     { grupo: 'Brincos (cliente)' },
     ['Correcciones duras (más de 8 m)', v(r.correccionesDurasPorMin, ' /min'), (r.correccionesDurasPorMin ?? 0) > 0.5],
+    ['Detenido esperando al servidor', v(r.congeladoSPorMin, ' s/min'), (r.congeladoSPorMin ?? 0) > 1],
     ['Corrección p95 / máx.', `${v(r.correccionP95, ' m')} / ${v(r.correccionMax, ' m')}`, (r.correccionP95 ?? 0) > 1],
     ['Otros carros que saltan', `${v(r.brincosOtrosPorMin, ' /min')} (máx. ${v(r.brincoOtrosMax, ' m')})`, (r.brincosOtrosPorMin ?? 0) > 1],
     ['Hueco de estados en esos saltos', v(r.huecoEnBrincosOtros, ' ms'), (r.huecoEnBrincosOtros ?? 0) > (1000 / estadoHz.value) * 2],
@@ -124,6 +125,7 @@ function filas(j) {
     ['Ticks cubiertos repitiendo su control', `${v(r.inventadosPorS, ' /s')} (${v(r.cubiertosPorS, ' /s')} llegaron tarde)`, false],
     ['Ticks quieto (hueco de más de 0.35 s)', v(r.hambrePorS, ' /s'), (r.hambrePorS ?? 0) > 1],
     ['Tirados (cola llena)', v(r.tirados), (r.tirados ?? 0) > 0],
+    ['Perdidos (nunca llegaron)', v(r.perdidos), (r.perdidos ?? 0) > 0],
     ['Cola del socket (máx.)', v(r.bufferMax), (r.bufferMax ?? 0) > 20],
   ]
 }
@@ -237,6 +239,9 @@ function descargar() {
         <span v-else>va sobrado: no es el servidor</span>
         <template v-if="datos.config?.repetirControl !== undefined">
           · repetir control en huecos: <b>{{ datos.config.repetirControl ? 'sí' : 'no' }}</b>
+        </template>
+        <template v-if="datos.config?.proyectar !== undefined">
+          · proyección de los demás: <b>{{ datos.config.proyectar ? 'sí' : 'no (solo interpolados)' }}</b>
         </template>
       </p>
 
