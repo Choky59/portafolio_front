@@ -76,6 +76,7 @@ const COMPARAR_TRAMOS = [
   ['Otros carros que saltan', (r) => v(r.brincosOtrosPorMin, ' /min')],
   ['Hueco de estados p95', (r) => v(r.huecoP95, ' ms')],
   ['Cámara quieta', (r) => v(r.camaraQuietaMsPorMin, ' ms/min')],
+  ['Cámara lenta', (r) => v(r.camaraLentaMsPorMin, ' ms/min')],
   ['Ping p95', (r) => v(r.rttP95, ' ms')],
 ]
 
@@ -105,7 +106,8 @@ function filas(j) {
     ['Colchón de los otros carros', v(r.colchonOtros, ' ms'), (r.colchonOtros ?? 0) > 150],
     ['Sin estado, de largo', v(r.deLargoPorS, ' /s'), (r.deLargoPorS ?? 0) > 1],
     ['Cámara sin estado nuevo (siguió de largo)', v(r.camaraDeLargoPct, ' % de cuadros'), (r.camaraDeLargoPct ?? 0) > 5],
-    ['Cámara quieta (corte de más de 0.25 s)', v(r.camaraQuietaMsPorMin, ' ms/min'), (r.camaraQuietaMsPorMin ?? 0) > 200],
+    ['Cámara quieta (se le acabaron los estados)', v(r.camaraQuietaMsPorMin, ' ms/min'), (r.camaraQuietaMsPorMin ?? 0) > 200],
+    ['Cámara lenta (frenando por un estado tarde)', v(r.camaraLentaMsPorMin, ' ms/min'), (r.camaraLentaMsPorMin ?? 0) > 1000],
     { grupo: 'Ping y predicción (cliente)' },
     ['Ping p50 / p95 / p99', `${v(r.rttP50)} / ${v(r.rttP95)} / ${v(r.rttP99)} ms`, (r.rttP95 ?? 0) > 150],
     ['Confirmación de controles p95', v(r.confirmacionP95, ' ms'), false],
