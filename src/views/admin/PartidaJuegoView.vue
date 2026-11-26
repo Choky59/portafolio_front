@@ -181,6 +181,11 @@ const graficas = computed(() => [
 
 const presupuesto = computed(() => 1000 / (datos.value?.servidorActual?.tickHz ?? 60))
 
+/** Los tirones del servidor: qué lo detuvo, cuándo (desde el inicio de la partida) y su contexto */
+const NOMBRE_TIRON = { tick: 'Tick lento', controles: 'Ráfaga de controles', estado: 'Mandar el estado', gc: 'Recolector de basura (GC)' }
+const segundoDe = (t) => `+${((t - (datos.value?.inicio ?? t)) / 1000).toFixed(1)} s`
+const detalleTiron = (d) => (d ? Object.entries(d).map(([k, v]) => `${k} ${v}`).join(' · ') : '')
+
 /* ------------------------------ Brincos ------------------------------ */
 
 const TEXTO_BRINCO = {
@@ -246,6 +251,25 @@ function descargar() {
           · proyección de los demás: <b>{{ datos.config.proyectar ? 'sí' : 'no (solo interpolados)' }}</b>
         </template>
       </p>
+
+      <details v-if="datos.servidor.tirones?.length" class="tirones">
+        <summary>
+          <b>Tirones del servidor</b> ({{ datos.servidor.tirones.length }}): lo que lo detuvo; en rojo, los que se notan (40 ms o más)
+        </summary>
+        <table>
+          <thead>
+            <tr><th>Cuándo</th><th>Qué</th><th>ms</th><th>Contexto</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(t, i) in datos.servidor.tirones" :key="i" :class="{ malo: t.ms >= 40 }">
+              <td>{{ segundoDe(t.t) }}</td>
+              <td>{{ NOMBRE_TIRON[t.tipo] ?? t.tipo }}</td>
+              <td>{{ t.ms }}</td>
+              <td class="muted">{{ detalleTiron(t.detalle) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
 
       <p v-if="!jugadores.length" class="muted">Todavía no llega ningún reporte (los manda cada jugador cada 2 s).</p>
 
@@ -336,6 +360,20 @@ function descargar() {
 </template>
 
 <style scoped>
+.tirones {
+  margin: 0 0 1rem;
+}
+.tirones table {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  border-collapse: collapse;
+}
+.tirones th,
+.tirones td {
+  padding: 0.2rem 0.6rem;
+  text-align: left;
+}
+
 .partida-juego__volver {
   display: inline-block;
   margin-bottom: 12px;
