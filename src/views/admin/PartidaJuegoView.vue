@@ -63,7 +63,7 @@ onBeforeUnmount(() => {
 
 const enCurso = computed(() => datos.value?.fin === null)
 const jugadores = computed(() => datos.value?.jugadores ?? [])
-const estadoHz = computed(() => datos.value?.servidorActual?.estadoHz ?? 30)
+const estadoHz = computed(() => datos.value?.config?.estadoHz ?? datos.value?.servidorActual?.estadoHz ?? 30)
 
 const resumenDe = (j) => (vista.value === 'ahora' && j.ahora ? j.ahora : j.total)
 const banderasDe = (j) => (vista.value === 'ahora' && j.ahora ? j.banderasAhora : j.banderas)
@@ -91,6 +91,7 @@ const intervaloEntrega = (x) => x ? `${x.p95} / ${x.max} ms` : '—'
 function filas(j) {
   const r = resumenDe(j)
   const entrega = r.entregaEstados
+  const transportePing = r.transportePing === 'webrtc' ? ' WebRTC' : r.transportePing === 'websocket' ? ' WebSocket' : ''
   const esperado = Math.round((1000 / estadoHz.value) * 10) / 10
   return [
     { grupo: 'Render (cliente)' },
@@ -121,7 +122,7 @@ function filas(j) {
     ['Cámara quieta (se le acabaron los estados)', v(r.camaraQuietaMsPorMin, ' ms/min'), (r.camaraQuietaMsPorMin ?? 0) > 200],
     ['Cámara lenta (frenando por un estado tarde)', v(r.camaraLentaMsPorMin, ' ms/min'), (r.camaraLentaMsPorMin ?? 0) > 1000],
     { grupo: 'Ping y predicción (cliente)' },
-    ['Ping p50 / p95 / p99', `${v(r.rttP50)} / ${v(r.rttP95)} / ${v(r.rttP99)} ms`, (r.rttP95 ?? 0) > 150],
+    [`Ping${transportePing} p50 / p95 / p99`, `${v(r.rttP50)} / ${v(r.rttP95)} / ${v(r.rttP99)} ms`, (r.rttP95 ?? 0) > 150],
     ['Confirmación de controles p95', v(r.confirmacionP95, ' ms'), false],
     ['Retraso de envío p95', v(r.envioP95, ' ms'), (r.envioP95 ?? 0) > 20],
     ['Correcciones', v(r.correccionesPorS, ' /s'), (r.correccionesPorS ?? 0) > 2],
