@@ -82,6 +82,7 @@ const COMPARAR_TRAMOS = [
 ]
 
 const v = (x, unidad = '') => (x === null || x === undefined ? '—' : `${x}${unidad}`)
+const intervaloEntrega = (x) => x ? `${x.p95} / ${x.max} ms` : '—'
 
 /**
  * The rows of each player's table: [label, value, bad?]. "Cliente" is what their game reports,
@@ -89,6 +90,7 @@ const v = (x, unidad = '') => (x === null || x === undefined ? '—' : `${x}${un
  */
 function filas(j) {
   const r = resumenDe(j)
+  const entrega = r.entregaEstados
   const esperado = Math.round((1000 / estadoHz.value) * 10) / 10
   return [
     { grupo: 'Render (cliente)' },
@@ -101,6 +103,14 @@ function filas(j) {
     ['Canal rápido (WebRTC) abierto', v(r.canalRapidoPct, ' % del tiempo'), (r.canalRapidoPct ?? 100) < 50],
     ['Canal rápido por el relevo TURN', v(r.canalRelevoPct, ' %'), false],
     ['Estados que llegaron por el canal rápido', v(r.estadosPorCanalPct, ' %'), false],
+    ...(entrega ? [
+      { grupo: 'Entrega de estados (p95 / máx.)' },
+      ['Entre envíos del servidor', intervaloEntrega(entrega.envio), false],
+      ['Entre llegadas al transporte del cliente', intervaloEntrega(entrega.recepcion), false],
+      ['Entre estados procesados por el juego', intervaloEntrega(entrega.juego), false],
+      ['De la llegada al procesamiento', intervaloEntrega(entrega.espera), false],
+      ['Estados saltados / tardíos descartados', `${entrega.omitidos} / ${entrega.descartados}`, false],
+    ] : []),
     { grupo: 'Bajada: estados del servidor (cliente)' },
     ['Recibidos', v(r.estadosPct, ' %'), (r.estadosPct ?? 100) < 90],
     [`Hueco p95 / máx. (esperado ${esperado} ms)`, `${v(r.huecoP95, ' ms')} / ${v(r.huecoMax, ' ms')}`, (r.huecoP95 ?? 0) > esperado * 2],
