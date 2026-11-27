@@ -76,6 +76,18 @@ function uptime(s) {
       event loop p95 <b :class="{ malo: servidor.bucleP95 > 20 }">{{ servidor.bucleP95 }} ms</b> ·
       {{ servidor.rssMb }} MB · {{ servidor.salas }} salas · {{ servidor.sockets }} conexiones ·
       {{ servidor.tickHz }} Hz física / {{ servidor.estadoHz }} Hz estados · encendido {{ uptime(servidor.uptime) }}
+      <template v-if="servidor.carga">
+        <br />
+        {{ servidor.carga.jugando }} salas jugando · {{ servidor.carga.humanos }} personas y {{ servidor.carga.bots }} bots ·
+        {{ servidor.carga.canales }} canales rápidos · event loop p50 {{ servidor.bucleP50 }} ms / máx.
+        <b :class="{ malo: servidor.bucleMax > 40 }">{{ servidor.bucleMax }} ms</b>
+      </template>
+      <template v-if="servidor.memoria">
+        · heap <b :class="{ malo: servidor.memoria.heapMb > servidor.memoria.heapLimiteMb * 0.8 }">{{ servidor.memoria.heapMb }}</b> de
+        {{ servidor.memoria.heapLimiteMb }} MB
+      </template>
+      <template v-if="servidor.nucleos"> · {{ servidor.nucleos }} núcleos</template>
+      <template v-if="servidor.version"> · versión {{ servidor.version }}</template>
     </p>
 
     <template v-for="grupo in [{ titulo: 'En curso', lista: enCurso }, { titulo: 'Recientes', lista: terminadas }]" :key="grupo.titulo">
@@ -95,7 +107,7 @@ function uptime(s) {
               </span>
             </div>
 
-            <p v-if="p.servidor.banderas.length" class="bandera bandera--malo">{{ p.servidor.banderas[0].texto }}</p>
+            <p v-for="b in p.servidor.banderas" :key="b.texto" class="bandera bandera--malo">{{ b.texto }}</p>
 
             <ul class="jugadores">
               <li v-for="j in p.jugadores" :key="j.id" class="jugador" :class="`jugador--${peorNivel(banderasDe(p, j))}`">

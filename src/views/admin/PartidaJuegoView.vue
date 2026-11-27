@@ -186,6 +186,69 @@ const NOMBRE_TIRON = { tick: 'Tick lento', controles: 'Ráfaga de controles', es
 const segundoDe = (t) => `+${((t - (datos.value?.inicio ?? t)) / 1000).toFixed(1)} s`
 const detalleTiron = (d) => (d ? Object.entries(d).map(([k, v]) => `${k} ${v}`).join(' · ') : '')
 
+/* ------------------------- Server health ------------------------- */
+
+/** Lo del servidor entero durante la partida (las partidas guardadas antes no lo traen: null) */
+const salud = computed(() => datos.value?.servidor?.salud ?? null)
+const inicioServidor = computed(() => datos.value?.servidor?.inicio ?? null)
+const vecinos = computed(() => datos.value?.servidor?.vecinos ?? [])
+const llamadasBase = computed(() => datos.value?.servidor?.base ?? [])
+const NOMBRE_BASE = { usarBoleto: 'Cobrar boleto', premiarMulti: 'Pagar lugar', premiarCopa: 'Premiar copa' }
+const r1 = (x) => Math.round(x * 10) / 10
+
+/** The server samples (every 5 s) flattened for the charts; undefined where an old sample lacks it */
+const puntosServidor = computed(() =>
+  (datos.value?.servidor?.muestras ?? []).map((m) => ({
+    t: m.t,
+    tickP95: m.tickP95,
+    tickMax: m.tickMax,
+    cpu: m.cpu,
+    cpuSala: m.sala?.cpuPct,
+    jugando: m.carga?.jugando,
+    personas: m.carga?.humanos,
+    bots: m.carga?.bots,
+    heap: m.memoria?.heapMb,
+    rss: m.memoria?.rssMb,
+    gcMsPorS: m.gc ? r1(m.gc.ms / 5) : undefined,
+    gcMax: m.gc?.maxMs,
+    kbPorS: m.sala?.kbPorS,
+    bufferKb: m.sala ? r1(m.sala.canalBufferMax / 1024) : undefined,
+    bucleP50: m.bucleP50,
+    bucleP95: m.bucleP95,
+    bucleMax: m.bucleMax,
+    continuaciones: m.sala?.continuaciones,
+  })),
+)
+
+const graficasServidor = computed(() => [
+  { titulo: 'Tick de esta sala', unidad: ' ms', limite: presupuesto.value, series: [{ clave: 'tickP95', nombre: 'p95', color: 'var(--accent)' }, { clave: 'tickMax', nombre: 'máx.', color: 'var(--calor)' }] },
+  { titulo: 'CPU (% de un núcleo)', unidad: ' %', limite: 70, series: [{ clave: 'cpu', nombre: 'todo el servidor', color: 'var(--calor)' }, { clave: 'cpuSala', nombre: 'esta sala', color: 'var(--accent)' }] },
+  { titulo: 'Carga del servidor', series: [{ clave: 'jugando', nombre: 'salas jugando', color: 'var(--accent)' }, { clave: 'personas', nombre: 'personas', color: 'var(--calor)' }, { clave: 'bots', nombre: 'bots', color: 'var(--muted, #888)' }] },
+  { titulo: 'Event loop (retraso)', unidad: ' ms', limite: 16.7, series: [{ clave: 'bucleP50', nombre: 'p50', color: 'var(--accent)' }, { clave: 'bucleP95', nombre: 'p95', color: 'var(--calor)' }, { clave: 'bucleMax', nombre: 'máx.', color: 'var(--extremo)' }] },
+  { titulo: 'Memoria', unidad: ' MB', limite: salud.value?.heapLimiteMb ? r1(salud.value.heapLimiteMb * 0.8) : null, series: [{ clave: 'heap', nombre: 'heap', color: 'var(--accent)' }, { clave: 'rss', nombre: 'rss', color: 'var(--calor)' }] },
+  { titulo: 'Recolector de basura (GC)', unidad: ' ms', series: [{ clave: 'gcMsPorS', nombre: 'ms/s', color: 'var(--accent)' }, { clave: 'gcMax', nombre: 'pausa máx.', color: 'var(--calor)' }] },
+  { titulo: 'Estado de esta sala', unidad: ' KB', series: [{ clave: 'kbPorS', nombre: 'KB/s por jugador', color: 'var(--accent)' }, { clave: 'bufferKb', nombre: 'esperando en el canal', color: 'var(--calor)' }] },
+  { titulo: 'Turnos atrasados de esta sala', unidad: ' /5 s', series: [{ clave: 'continuaciones', nombre: 'siguió con setImmediate', color: 'var(--calor)' }] },
+])
+
+/** The health summary rows: [label, value, bad?] */
+const filasSalud = computed(() => {
+  const s = salud.value
+  if (!s) return []
+  return [
+    ['Salas jugando / en el servidor (máx.)', `${s.jugandoMax} / ${s.salasMax}`, false],
+    ['Personas / bots en el servidor (máx.)', `${s.personasMax} / ${s.botsMax}`, false],
+    ['CPU de todo el servidor (máx.)', `${s.cpuMax} % de un núcleo`, s.cpuMax > 70],
+    ['CPU de esta sala (mediana / máx.)', `${s.cpuSalaMediana} / ${s.cpuSalaMax} %`, false],
+    ['Event loop p95 (peor muestra)', `${s.bucleP95Max} ms`, s.bucleP95Max > presupuesto.value],
+    ['GC', `${s.gcMsPorS} ms/s (pausa máx. ${s.gcMaxMs} ms)`, s.gcMsPorS > 20],
+    ['Heap (máx. / límite)', `${s.heapMaxMb} / ${s.heapLimiteMb} MB`, s.heapLimiteMb && s.heapMaxMb / s.heapLimiteMb > 0.8],
+    ['Estado típico', s.bytesEstado ? `${s.bytesEstado} bytes (hasta ${s.kbPorSMax} KB/s por jugador)` : '—', false],
+    ['Esperando en el canal rápido (máx.)', `${r1(s.canalBufferMax / 1024)} KB`, s.canalBufferMax > 64 * 1024],
+    ['Otras salas que lo detuvieron (15 ms o más)', `${vecinos.value.length}`, vecinos.value.some((t) => t.ms >= 40)],
+  ]
+})
+
 /* ------------------------------ Brincos ------------------------------ */
 
 const TEXTO_BRINCO = {
@@ -242,8 +305,12 @@ function descargar() {
       <p class="servidor muted">
         <b>Servidor en esta partida:</b> tick p95 {{ datos.servidor.tickP95 }} ms (máx. {{ datos.servidor.tickMax }} ms) de
         {{ Math.round(presupuesto * 10) / 10 }} ms ·
-        <span v-if="datos.servidor.banderas.length" class="malo">{{ datos.servidor.banderas[0].texto }}</span>
+        <span v-if="datos.servidor.banderas.length" class="malo">{{ datos.servidor.banderas.map((b) => b.texto).join(' · ') }}</span>
         <span v-else>va sobrado: no es el servidor</span>
+        <template v-if="salud">
+          · {{ salud.jugandoMax }} salas jugando y {{ salud.personasMax }} personas en el servidor (máx.) · CPU hasta {{ salud.cpuMax }} %
+          (esta sala {{ salud.cpuSalaMediana }} %) · heap hasta {{ salud.heapMaxMb }} MB
+        </template>
         <template v-if="datos.config?.repetirControl !== undefined">
           · repetir control en huecos: <b>{{ datos.config.repetirControl ? 'sí' : 'no' }}</b>
         </template>
@@ -266,6 +333,71 @@ function descargar() {
               <td>{{ NOMBRE_TIRON[t.tipo] ?? t.tipo }}</td>
               <td>{{ t.ms }}</td>
               <td class="muted">{{ detalleTiron(t.detalle) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+
+      <details v-if="salud || inicioServidor" class="tirones">
+        <summary><b>Salud del servidor</b>: todo el servidor durante la partida (no solo esta sala)</summary>
+        <table>
+          <tbody>
+            <tr v-for="[etiqueta, valor, malo] in filasSalud" :key="etiqueta" :class="{ malo }">
+              <td>{{ etiqueta }}</td>
+              <td>{{ valor }}</td>
+            </tr>
+            <template v-if="inicioServidor">
+              <tr><td>Versión del servidor</td><td>{{ inicioServidor.version ?? '—' }} · Node {{ inicioServidor.node }}</td></tr>
+              <tr>
+                <td>Al empezar</td>
+                <td>
+                  {{ inicioServidor.carga.jugando }} salas jugando de {{ inicioServidor.carga.salas }}, {{ inicioServidor.carga.humanos }} personas,
+                  {{ inicioServidor.carga.sockets }} sockets · encendido hace {{ duracion(inicioServidor.t - inicioServidor.uptime * 1000, inicioServidor.t) }}
+                </td>
+              </tr>
+              <tr>
+                <td>Máquina</td>
+                <td>
+                  {{ inicioServidor.nucleos }} núcleos · {{ inicioServidor.memoriaLibreMb }} de {{ inicioServidor.memoriaTotalMb }} MB libres · carga
+                  {{ inicioServidor.cargaPromedio.join(' / ') }}
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+      </details>
+
+      <details v-if="vecinos.length" class="tirones">
+        <summary>
+          <b>Otras salas que detuvieron el servidor</b> ({{ vecinos.length }}): el servidor es uno, así que también detuvieron esta partida; en rojo, 40 ms o más
+        </summary>
+        <table>
+          <thead>
+            <tr><th>Cuándo</th><th>Sala</th><th>Qué</th><th>ms</th><th>Contexto</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(t, i) in vecinos" :key="i" :class="{ malo: t.ms >= 40 }">
+              <td>{{ segundoDe(t.t) }}</td>
+              <td>{{ t.sala }} <span class="muted">({{ t.circuito }})</span></td>
+              <td>{{ NOMBRE_TIRON[t.tipo] ?? t.tipo }}</td>
+              <td>{{ t.ms }}</td>
+              <td class="muted">{{ detalleTiron(t.detalle) }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </details>
+
+      <details v-if="llamadasBase.length" class="tirones">
+        <summary><b>Llamadas a la base</b> ({{ llamadasBase.length }}): boletos y premios; en rojo, más de 500 ms</summary>
+        <table>
+          <thead>
+            <tr><th>Cuándo</th><th>Qué</th><th>ms</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="(b, i) in llamadasBase" :key="i" :class="{ malo: b.ms > 500 }">
+              <td>{{ segundoDe(b.t) }}</td>
+              <td>{{ NOMBRE_BASE[b.que] ?? b.que }}</td>
+              <td>{{ b.ms }}</td>
             </tr>
           </tbody>
         </table>
@@ -346,12 +478,20 @@ function descargar() {
             :puntos="g.puntos"
             :series="seriesJugadores"
           />
+        </div>
+      </template>
+
+      <template v-if="puntosServidor.length">
+        <h3 class="partida-juego__subtitulo">El servidor en el tiempo</h3>
+        <div class="graficas">
           <GraficaLinea
-            titulo="Tick del servidor"
-            unidad=" ms"
-            :limite="presupuesto"
-            :puntos="datos.servidor.muestras"
-            :series="[{ clave: 'tickP95', nombre: 'p95', color: 'var(--accent)' }, { clave: 'tickMax', nombre: 'máx.', color: 'var(--calor)' }]"
+            v-for="g in graficasServidor"
+            :key="g.titulo"
+            :titulo="g.titulo"
+            :unidad="g.unidad ?? ''"
+            :limite="g.limite ?? null"
+            :puntos="puntosServidor"
+            :series="g.series"
           />
         </div>
       </template>
