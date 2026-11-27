@@ -99,6 +99,7 @@ function filas(j) {
     ['Estuvo en segundo plano', r.oculto ? 'sí' : 'no', r.oculto],
     { grupo: 'Canal' },
     ['Canal rápido (WebRTC) abierto', v(r.canalRapidoPct, ' % del tiempo'), (r.canalRapidoPct ?? 100) < 50],
+    ['Canal rápido por el relevo TURN', v(r.canalRelevoPct, ' %'), false],
     ['Estados que llegaron por el canal rápido', v(r.estadosPorCanalPct, ' %'), false],
     { grupo: 'Bajada: estados del servidor (cliente)' },
     ['Recibidos', v(r.estadosPct, ' %'), (r.estadosPct ?? 100) < 90],
